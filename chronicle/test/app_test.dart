@@ -19,7 +19,13 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: ChronicleApp()));
     await tester.pumpAndSettle();
 
-    expect(find.text('Das Moor von Mörwald'), findsOneWidget);
+    // Der Untertitel ist kein Heading und damit von headingCaps unberührt.
+    expect(find.textContaining('Prüfstein'), findsOneWidget);
+
+    // Grimoire ist das Default-Preset und setzt Überschriften in Versalien.
+    // Genau das ist die Aufgabe von ChronicleTypography.formatHeading — und
+    // deshalb wird hier die Großschreibung erwartet, nicht der Rohtext.
+    expect(find.text('DAS MOOR VON MÖRWALD'), findsOneWidget);
   });
 
   testWidgets('Schmales Fenster zeigt die Bottom-Nav', (tester) async {
