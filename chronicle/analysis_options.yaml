@@ -35,5 +35,4 @@ linter:
     # Muss hier aktiviert sein, damit die Hochstufung auf `error` oben greift:
     # eine Severity-Angabe allein schaltet die Regel nicht ein.
     - unawaited_futures
-    - unnecessary_await_in_return
     - use_super_parameters

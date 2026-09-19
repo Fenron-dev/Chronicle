@@ -6,7 +6,6 @@
 // SCHRITT: 1
 
 import 'package:chronicle/app/app.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
