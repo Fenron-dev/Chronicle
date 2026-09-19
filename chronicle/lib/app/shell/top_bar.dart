@@ -72,7 +72,7 @@ class _VaultLabel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final session = ref.watch(activeVaultProvider).valueOrNull;
+    final session = ref.watch(activeVaultProvider).value;
     if (session == null) return const SizedBox.shrink();
 
     return Padding(
@@ -102,7 +102,7 @@ class _VaultMenu extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(activeVaultProvider);
-    final session = state.valueOrNull;
+    final session = state.value;
     if (session == null) return const SizedBox.shrink();
 
     final report = session.report;

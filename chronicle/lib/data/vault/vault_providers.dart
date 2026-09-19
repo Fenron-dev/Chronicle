@@ -71,11 +71,21 @@ class RecentVaults extends _$RecentVaults {
 /// Der aktive Vault. `null` bedeutet: noch keiner geöffnet.
 @Riverpod(keepAlive: true)
 class ActiveVault extends _$ActiveVault {
+  /// Die offene Index-Datenbank, unabhängig vom Provider-Zustand gehalten.
+  ///
+  /// Beim Entsorgen des Providers ist der Zugriff auf `state` nicht mehr
+  /// zulässig — die Datei-Sperre muss aber trotzdem fallen, sonst bleibt sie
+  /// auf einem Stick liegen, den der Nutzer gerade abziehen will.
+  ChronicleDatabase? _database;
+
   @override
   Future<VaultSession?> build() async {
     // Beim Start bewusst kein Auto-Open: der Picker ist der erste Screen,
     // und ein Stick, der nicht mehr steckt, darf den Start nicht blockieren.
-    ref.onDispose(() => state.valueOrNull?.database.close());
+    ref.onDispose(() {
+      _database?.close();
+      _database = null;
+    });
     return null;
   }
 
@@ -99,7 +109,7 @@ class ActiveVault extends _$ActiveVault {
 
   /// Schließt den aktiven Vault.
   Future<void> close() async {
-    await state.valueOrNull?.database.close();
+    await _closeDatabase();
     state = const AsyncData(null);
   }
 
@@ -109,7 +119,7 @@ class ActiveVault extends _$ActiveVault {
   /// am Index nicht stimmt. Reparieren wäre der falsche Reflex: ein kaputter
   /// Index ist nie ein Datenverlust.
   Future<void> reindex() async {
-    final session = state.valueOrNull;
+    final session = state.value;
     if (session == null) return;
 
     state = const AsyncLoading();
@@ -125,16 +135,14 @@ class ActiveVault extends _$ActiveVault {
   /// Schließt die alte Sitzung und ersetzt sie durch das Ergebnis von [open].
   ///
   /// Die alte Datenbank wird IMMER geschlossen, auch wenn das Öffnen der
-  /// neuen scheitert — sonst bleibt eine Datei-Sperre auf einem Stick
-  /// zurück, den der Nutzer gleich abziehen will.
+  /// neuen scheitert — sonst bleibt eine Datei-Sperre zurück.
   Future<void> _replaceWith(Future<VaultSession> Function() open) async {
-    final previous = state.valueOrNull;
     state = const AsyncLoading();
-    await previous?.database.close();
+    await _closeDatabase();
 
     state = await AsyncValue.guard(open);
 
-    final session = state.valueOrNull;
+    final session = state.value;
     if (session != null) {
       await ref
           .read(recentVaultsStoreProvider)
@@ -147,16 +155,23 @@ class ActiveVault extends _$ActiveVault {
     final database = ChronicleDatabase.forFile(
       File(VaultLayout.database(vault.rootPath)),
     );
+    _database = database;
+
     final scan = await ref.read(vaultScannerProvider).scan(vault.rootPath);
     final report = await IndexRebuilder(database).rebuild(scan);
     return VaultSession(vault: vault, database: database, report: report);
+  }
+
+  Future<void> _closeDatabase() async {
+    final database = _database;
+    _database = null;
+    await database?.close();
   }
 }
 
 /// Ob gerade ein Vault offen ist — das Gate des Routers.
 @Riverpod(keepAlive: true)
-bool hasOpenVault(Ref ref) =>
-    ref.watch(activeVaultProvider).valueOrNull != null;
+bool hasOpenVault(Ref ref) => ref.watch(activeVaultProvider).value != null;
 
 /// Alle indizierten Notizen des aktiven Vaults, für den Navigations-Baum.
 ///
@@ -164,7 +179,7 @@ bool hasOpenVault(Ref ref) =>
 /// sichtbar wird — sie hängt am Index, der sich bei jedem Rebuild ändert.
 @riverpod
 Future<List<VaultNote>> vaultNotes(Ref ref) async {
-  final session = ref.watch(activeVaultProvider).valueOrNull;
+  final session = ref.watch(activeVaultProvider).value;
   if (session == null) return const [];
   return session.database.allNotes();
 }
@@ -172,7 +187,7 @@ Future<List<VaultNote>> vaultNotes(Ref ref) async {
 /// Volltextsuche im aktiven Vault.
 @riverpod
 Future<List<NoteSearchHit>> vaultSearch(Ref ref, String query) async {
-  final session = ref.watch(activeVaultProvider).valueOrNull;
+  final session = ref.watch(activeVaultProvider).value;
   if (session == null) return const [];
   return session.database.search(query);
 }

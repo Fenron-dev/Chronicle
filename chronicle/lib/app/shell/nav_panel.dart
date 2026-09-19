@@ -44,20 +44,7 @@ class NavPanel extends StatelessWidget {
               onTap: () => onSelect(i),
             ),
           const SkinDivider(indent: 12),
-          Expanded(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(
-                  'Noch kein Vault geöffnet.\n'
-                  'Der Navigations-Baum erscheint ab Schritt 3.',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(color: palette.textMuted),
-                ),
-              ),
-            ),
-          ),
+          const Expanded(child: _VaultTree()),
         ],
       ),
     );

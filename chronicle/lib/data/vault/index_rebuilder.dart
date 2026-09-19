@@ -15,7 +15,6 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../domain/wikilink/wikilink.dart';
 import '../db/database.dart';
 import 'vault_scanner.dart';
 
