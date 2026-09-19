@@ -117,6 +117,11 @@ hinzufügen. Aus demselben Grund verzichten wir auf `drift_flutter` (hängt noch
 und öffnen die DB direkt über `drift/native.dart`; das passt ohnehin besser, weil der Pfad aus einem
 nutzer-gewählten Vault-Ordner kommt und nicht aus dem App-Dokumentenverzeichnis.
 
+**`sqlite3` 3.x bündelt die native Bibliothek selbst** (über Dart-Build-Hooks) — ohne zusätzliche
+Build-Konfiguration und ohne `sqlite3_flutter_libs`. Geladen wird sie zur **Build**-Zeit in der CI,
+nicht zur Laufzeit; §2.3 ist davon also nicht berührt. `SQLITE_ENABLE_FTS5` gehört zu den
+Default-Defines, und `test/vault_test.dart` prüft das zur Sicherheit ab, statt es anzunehmen.
+
 Versionen bei größeren Abhängigkeits-Änderungen hier aktualisieren, nicht nur in `pubspec.yaml`.
 
 ---
@@ -267,8 +272,9 @@ Analyzer/Tests in CI grün, kurze Zusammenfassung, dann weiter.
 | Schritt | Inhalt | Status |
 |---|---|---|
 | **1** | Repo-Setup, `CLAUDE.md`, Skills, CI-Workflows (Analyzer/Test/Build), Dart-Scaffold | **erledigt** |
-| **2** | Theme-Layer (4 Presets → `ThemeData` + `ChronicleSkin`) + App-Shell (`ResponsiveShell`, 3-Panel-Desktop, go_router `StatefulShellRoute`) | **aktuell** |
-| **3** | Vault-Format: Ordner öffnen/anlegen, Datei-Scan, `index.db`-Rebuild (Drift + FTS5), Multi-Vault-Picker, Backup/Restore | offen |
+| **2** | Theme-Layer (4 Presets → `ThemeData` + `ChronicleSkin`) + App-Shell (`ResponsiveShell`, 3-Panel-Desktop, go_router `StatefulShellRoute`) | **erledigt** |
+| **3** | Vault-Format: Ordner öffnen/anlegen, Datei-Scan, `index.db`-Rebuild (Drift + FTS5), Multi-Vault-Picker | **aktuell** |
+| **3b** | Backup/Restore + Snapshots vor Migrationen | offen |
 | **4** | Play-Log (getippte Einträge, Sichtbarkeits-Toggle, Wikilinks) | offen |
 | **5** | Codex-/Markdown-Editor (Source/Reading, Frontmatter, Callouts, Embeds, Hover-Preview) | offen |
 | **6** | Roll-Engine-Portierung + Dice/Oracle/Deck-Roller + Roll-Log im Play-Log | offen |

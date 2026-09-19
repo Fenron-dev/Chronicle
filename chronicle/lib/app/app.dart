@@ -7,7 +7,7 @@
 //        einfärben. Das Theme hängt deshalb an einem Provider, nicht an
 //        einem lokalen Zustand.
 //
-// SCHRITT: 2
+// SCHRITT: 2 (Vault-Gate ergänzt in Schritt 3)
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,7 +31,7 @@ class ChronicleApp extends ConsumerWidget {
       theme: buildChronicleTheme(preset, Brightness.light),
       darkTheme: buildChronicleTheme(preset, Brightness.dark),
       themeMode: mode,
-      routerConfig: chronicleRouter,
+      routerConfig: ref.watch(chronicleRouterProvider),
     );
   }
 }

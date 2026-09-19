@@ -17,6 +17,7 @@ import '../../core/theme/chronicle_skin.dart';
 import '../../core/theme/presets.dart';
 import '../../core/theme/theme_access.dart';
 import '../../core/theme/theme_provider.dart';
+import '../../data/vault/vault_providers.dart';
 import 'shell_providers.dart';
 
 class ChronicleTopBar extends ConsumerWidget {
@@ -43,7 +44,9 @@ class ChronicleTopBar extends ConsumerWidget {
             onPressed: () =>
                 ref.read(navPanelVisibleProvider.notifier).toggle(),
           ),
+          const _VaultLabel(),
           const Expanded(child: _FocusedTrack()),
+          const _VaultMenu(),
           const _ThemeQuickSwitcher(),
           const _BrightnessToggle(),
           IconButton(
@@ -59,6 +62,90 @@ class ChronicleTopBar extends ConsumerWidget {
           const SizedBox(width: 4),
         ],
       ),
+    );
+  }
+}
+
+/// Name des offenen Vaults.
+class _VaultLabel extends ConsumerWidget {
+  const _VaultLabel();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final session = ref.watch(activeVaultProvider).valueOrNull;
+    if (session == null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Row(
+        children: [
+          Icon(
+            Icons.inventory_2_outlined,
+            size: 15,
+            color: context.palette.accent,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            session.vault.name,
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Vault-Aktionen: Index neu aufbauen, Vault schließen.
+class _VaultMenu extends ConsumerWidget {
+  const _VaultMenu();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(activeVaultProvider);
+    final session = state.valueOrNull;
+    if (session == null) return const SizedBox.shrink();
+
+    final report = session.report;
+
+    return PopupMenuButton<String>(
+      tooltip: 'Vault',
+      icon: const Icon(Icons.inventory_2_outlined),
+      onSelected: (value) {
+        final notifier = ref.read(activeVaultProvider.notifier);
+        if (value == 'reindex') {
+          notifier.reindex();
+        } else if (value == 'close') {
+          notifier.close();
+        }
+      },
+      itemBuilder: (context) => [
+        PopupMenuItem<String>(
+          enabled: false,
+          child: Text(
+            '\${report.noteCount} Notizen · \${report.edgeCount} Verweise'
+            '\${report.unresolvedLinks > 0 ? " · \${report.unresolvedLinks} offen" : ""}',
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
+        ),
+        if (report.problems.isNotEmpty)
+          PopupMenuItem<String>(
+            enabled: false,
+            child: Text(
+              '\${report.problems.length} Datei(en) übersprungen',
+              style: Theme.of(context).textTheme.labelSmall
+                  ?.copyWith(color: context.palette.warning),
+            ),
+          ),
+        const PopupMenuDivider(),
+        const PopupMenuItem<String>(
+          value: 'reindex',
+          child: Text('Index neu aufbauen'),
+        ),
+        const PopupMenuItem<String>(
+          value: 'close',
+          child: Text('Vault schließen'),
+        ),
+      ],
     );
   }
 }

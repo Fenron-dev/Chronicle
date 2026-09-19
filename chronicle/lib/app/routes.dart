@@ -7,7 +7,10 @@
 // SCHRITT: 2
 
 abstract final class Routes {
-  /// Play-Log der laufenden Partie — der Standard-Einstieg.
+  /// Vault-Auswahl. Der Einstieg, solange kein Vault offen ist.
+  static const String vaultPicker = '/vault';
+
+  /// Play-Log der laufenden Partie — der Standard-Einstieg mit Vault.
   static const String play = '/play';
 
   /// Codex-/Wiki-Seiten.

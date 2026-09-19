@@ -1,41 +1,128 @@
 // Datei: chronicle/test/app_test.dart
 //
-// ZWECK: Rauchtest der App-Shell.
+// ZWECK: Die App-Shell von außen — Vault-Gate, Desktop-/Mobile-Umschaltung,
+//        Theme-Anwendung.
 //
-// SCHRITT: 2
+// WARUM MIT ECHTEM VAULT: Das Gate ist der Kern von Schritt 3. Einen
+//        gefälschten Vault-Zustand zu injizieren würde genau die Verdrahtung
+//        überspringen, die hier schiefgehen kann.
+//
+// SCHRITT: 3
+
+import 'dart:io';
 
 import 'package:chronicle/app/app.dart';
+import 'package:chronicle/data/vault/vault_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('App startet im Play-Log', (tester) async {
-    // Desktop-Breite, damit die 3-Panel-Variante greift.
-    tester.view.physicalSize = const Size(1600, 1000);
+  late Directory tempDir;
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    tempDir = await Directory.systemTemp.createTemp('chronicle_app_test');
+  });
+
+  tearDown(() async {
+    if (await tempDir.exists()) await tempDir.delete(recursive: true);
+  });
+
+  /// Setzt eine Desktop-Fenstergröße für diesen Test.
+  void useSize(WidgetTester tester, Size size) {
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
+  }
+
+  testWidgets('startet ohne Vault im Picker', (tester) async {
+    useSize(tester, const Size(1600, 1000));
 
     await tester.pumpWidget(const ProviderScope(child: ChronicleApp()));
     await tester.pumpAndSettle();
 
-    // Der Untertitel ist kein Heading und damit von headingCaps unberührt.
-    expect(find.textContaining('Prüfstein'), findsOneWidget);
-
-    // Grimoire ist das Default-Preset und setzt Überschriften in Versalien.
-    // Genau das ist die Aufgabe von ChronicleTypography.formatHeading — und
-    // deshalb wird hier die Großschreibung erwartet, nicht der Rohtext.
-    expect(find.text('DAS MOOR VON MÖRWALD'), findsOneWidget);
+    expect(find.text('Vault öffnen…'), findsOneWidget);
+    expect(find.text('Neuen Vault anlegen…'), findsOneWidget);
   });
 
-  testWidgets('Schmales Fenster zeigt die Bottom-Nav', (tester) async {
-    tester.view.physicalSize = const Size(500, 900);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
+  testWidgets('zeigt nach dem Öffnen das 3-Panel-Desktop-Layout', (
+    tester,
+  ) async {
+    useSize(tester, const Size(1600, 1000));
 
-    await tester.pumpWidget(const ProviderScope(child: ChronicleApp()));
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const ChronicleApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await container
+        .read(activeVaultProvider.notifier)
+        .createAndOpen(tempDir.path, 'Testvault');
+    await tester.pumpAndSettle();
+
+    // Das Gate hat umgeschaltet: Play-Log statt Picker.
+    expect(find.text('Vault öffnen…'), findsNothing);
+    expect(find.textContaining('Prüfstein'), findsOneWidget);
+
+    // Grimoire ist das Default-Preset und setzt Überschriften in Versalien —
+    // genau das ist die Aufgabe von ChronicleTypography.formatHeading.
+    expect(find.text('DAS MOOR VON MÖRWALD'), findsOneWidget);
+
+    // Der Vault-Name steht in der oberen Leiste.
+    expect(find.text('Testvault'), findsOneWidget);
+  });
+
+  testWidgets('zeigt im schmalen Fenster die Bottom-Nav', (tester) async {
+    useSize(tester, const Size(500, 900));
+
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const ChronicleApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await container
+        .read(activeVaultProvider.notifier)
+        .createAndOpen(tempDir.path, 'Testvault');
     await tester.pumpAndSettle();
 
     expect(find.byType(NavigationBar), findsOneWidget);
+  });
+
+  testWidgets('schließt den Vault zurück in den Picker', (tester) async {
+    useSize(tester, const Size(1600, 1000));
+
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const ChronicleApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final notifier = container.read(activeVaultProvider.notifier);
+    await notifier.createAndOpen(tempDir.path, 'Testvault');
+    await tester.pumpAndSettle();
+
+    await notifier.close();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Vault öffnen…'), findsOneWidget);
   });
 }
