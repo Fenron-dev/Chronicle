@@ -273,8 +273,8 @@ Analyzer/Tests in CI grün, kurze Zusammenfassung, dann weiter.
 |---|---|---|
 | **1** | Repo-Setup, `CLAUDE.md`, Skills, CI-Workflows (Analyzer/Test/Build), Dart-Scaffold | **erledigt** |
 | **2** | Theme-Layer (4 Presets → `ThemeData` + `ChronicleSkin`) + App-Shell (`ResponsiveShell`, 3-Panel-Desktop, go_router `StatefulShellRoute`) | **erledigt** |
-| **3** | Vault-Format: Ordner öffnen/anlegen, Datei-Scan, `index.db`-Rebuild (Drift + FTS5), Multi-Vault-Picker | **aktuell** |
-| **3b** | Backup/Restore + Snapshots vor Migrationen | offen |
+| **3** | Vault-Format: Ordner öffnen/anlegen, Datei-Scan, `index.db`-Rebuild (Drift + FTS5), Multi-Vault-Picker | **erledigt** |
+| **3b** | Backup/Restore + Snapshots vor Migrationen | **als Nächstes** |
 | **4** | Play-Log (getippte Einträge, Sichtbarkeits-Toggle, Wikilinks) | offen |
 | **5** | Codex-/Markdown-Editor (Source/Reading, Frontmatter, Callouts, Embeds, Hover-Preview) | offen |
 | **6** | Roll-Engine-Portierung + Dice/Oracle/Deck-Roller + Roll-Log im Play-Log | offen |
@@ -285,6 +285,10 @@ Analyzer/Tests in CI grün, kurze Zusammenfassung, dann weiter.
 | **11** | LLM-Profile + Fallback-Ketten + Writing-Tools + Orakel-Anreicherung, globaler AI-Schalter | offen |
 | **12** | Command-Palette, Slash-Commands, Workspaces, Tags/Properties/Backlinks, FTS5-Suche | offen |
 | **13** | Story-Export (Markdown/HTML/PDF, Narration-Filter) | offen |
+
+**Erste testbare Version:** nach Schritt 3. Vault anlegen oder öffnen, Index aus den Dateien
+aufbauen, 3-Panel-Desktop-Layout mit Navigations-Baum, vier Themes umschaltbar. Binaries für alle
+fünf Plattformen unter „Actions → Lauf → Artifacts".
 
 **Später (nach MVP):** Canvas-Engine (Token-Board + Layout-Seiten), KI-gestütztes Styling, Vision
 (`analyzeImage`), Embeddings/RAG, Graph-View, Sync-Modul (PomTechFlow), Mobile-Polish.
