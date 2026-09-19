@@ -20,10 +20,7 @@ class ChronicleApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      title: 'Chronicle',
-      home: _PlaceholderScreen(),
-    );
+    return const MaterialApp(title: 'Chronicle', home: _PlaceholderScreen());
   }
 }
 
@@ -32,10 +29,6 @@ class _PlaceholderScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Text('Chronicle'),
-      ),
-    );
+    return const Scaffold(body: Center(child: Text('Chronicle')));
   }
 }

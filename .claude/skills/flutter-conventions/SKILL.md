@@ -34,6 +34,31 @@ Daraus folgt außerdem: **Code muss beim ersten Mal stimmen.** Ein CI-Durchlauf 
 Sekundenbruchteil. Vor dem Push den eigenen Diff gegenlesen, als wäre man der Analyzer: fehlende
 `part`-Direktive? Falscher Provider-Name? Nicht importiertes Symbol?
 
+### Formatierung: das CI-Gate prüft `dart format`
+
+`dart format --output=none --set-exit-if-changed lib test` läuft als erster Schritt — ein
+Formatierungsfehler kostet denselben Durchlauf wie ein echter Bug.
+
+Die wichtigste Falle ist der **Tall-Style-Formatter** (ab Dart 3.7): **eine abschließende Komma
+erzwingt keinen Umbruch mehr.** Der Formatter entscheidet allein nach Zeilenbreite (80 Zeichen).
+Ein Widget-Baum, der als mehrzeilige Konstruktion mit Trailing Comma geschrieben ist, wird
+zusammengezogen, wenn er in eine Zeile passt:
+
+```dart
+// So geschrieben …
+return const MaterialApp(
+  title: 'Chronicle',
+  home: _PlaceholderScreen(),
+);
+
+// … so formatiert (passt in 80 Zeichen):
+return const MaterialApp(title: 'Chronicle', home: _PlaceholderScreen());
+```
+
+Beim Schreiben also mitzählen: passt der Ausdruck inklusive Einrückung in 80 Zeichen, gehört er in
+eine Zeile. Wer mehrzeilig formatieren *will*, muss den Ausdruck echt zu lang machen — nicht bloß
+ein Komma setzen.
+
 ---
 
 ## Ordnerstruktur
