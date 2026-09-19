@@ -1,17 +1,35 @@
 // Datei: chronicle/test/app_test.dart
 //
-// ZWECK: Rauchtest. Belegt, dass das CI-Gate tatsächlich Tests ausführt und
-//        die App ohne Exception baut.
+// ZWECK: Rauchtest der App-Shell.
 //
-// SCHRITT: 1
+// SCHRITT: 2
 
 import 'package:chronicle/app/app.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('ChronicleApp baut ohne Fehler', (tester) async {
-    await tester.pumpWidget(const ChronicleApp());
+  testWidgets('App startet im Play-Log', (tester) async {
+    // Desktop-Breite, damit die 3-Panel-Variante greift.
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
 
-    expect(find.text('Chronicle'), findsOneWidget);
+    await tester.pumpWidget(const ProviderScope(child: ChronicleApp()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Das Moor von Mörwald'), findsOneWidget);
+  });
+
+  testWidgets('Schmales Fenster zeigt die Bottom-Nav', (tester) async {
+    tester.view.physicalSize = const Size(500, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(const ProviderScope(child: ChronicleApp()));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NavigationBar), findsOneWidget);
   });
 }

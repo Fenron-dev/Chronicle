@@ -72,8 +72,36 @@ Die Eintragstyp-Farben sind der Kern des Play-Logs: sie machen beim Überfliegen
 was Erzählung ist und was Mechanik. Sie müssen in jedem Preset klar unterscheidbar bleiben — auch
 in Terminal, wo die Palette schmal ist.
 
-**Typografie** — `fontHeading`, `fontBody`, `fontMono` (je aus einer kuratierten Google-Fonts-Liste),
-dazu `headingWeight`, `headingCaps` (bool), `headingLetterSpacing`.
+**Farbtöne weit streuen, nicht nach Bedeutung wählen.** Beim ersten Anlegen der vier Presets lagen
+elf Paare zu dicht beieinander, weil die Zuordnung naheliegend gewählt war: Gold für Würfe neben
+Orange für Plot-Beats, Violett für Orakel neben Blau für KI, Türkis für Karten neben demselben
+Blau. Jede Zuordnung für sich plausibel — zusammen unlesbar. Die tragfähige Verteilung streut die
+Farbtöne über den Kreis:
+
+| Token | Farbton | |
+|---|---|---|
+| `entryRoll` | 44° | Gold |
+| `entryPlotbeat` | 353° | Karmin |
+| `entryOracle` | 283° | Violett |
+| `entryAi` | 208° | Azur |
+| `entryCard` | 160° | Grünblau |
+
+`entryNarration` und `entryMeta` bleiben neutral und heben sich allein über die Helligkeit ab.
+**`entryMeta` ist dabei nicht `textMuted`**: in warmen Presets kollidiert der gedämpfte Textton mit
+Gold, im Terminal mit Grünblau. Es ist ein eigener Token mit fast herausgenommener Sättigung.
+
+Den Preset-Charakter trägt die **Sättigung**, nicht der Farbton: Grimoire gedämpft, Terminal neon.
+Die Helligkeit wird gegen den Kontrast zur Grundfläche gelöst, nicht nach Gefühl gesetzt.
+
+**Typografie** — `heading`, `body`, `mono` (je aus einer kuratierten Liste), dazu `headingWeight`,
+`headingCaps` (bool), `headingLetterSpacing`, `bodyLetterSpacing`. Liegt in einer eigenen
+`ChronicleTypography`-Extension, weil `headingCaps` sich in einem `TextStyle` nicht ausdrücken
+lässt — Versalien sind eine Texttransformation, keine Schrifteigenschaft.
+
+**Schriften werden gebündelt, nicht geladen.** Kein `google_fonts`: das Paket holt die Dateien zur
+Laufzeit von `fonts.googleapis.com` und verletzt damit offline-first (`CLAUDE.md` §2.3). Die
+Presets nennen nur Familiennamen; die Dateien liegen als Assets im Repo. Fehlt eine Familie, fällt
+Flutter auf die Plattformschrift zurück — die App bleibt benutzbar.
 
 Die Typografie ist der größte Mood-Hebel: Serifen + Versalien lesen sich mittelalterlich,
 Mono + weites Letter-Spacing liest sich nach SciFi. Wer nur die Farben tauscht, bekommt vier mal
@@ -89,7 +117,7 @@ Skin und entscheiden selbst, was sie daraus machen.
 | Parameter | Typ | Werte | Wirkung |
 |---|---|---|---|
 | `ornament` | enum | `none` · `subtle` · `rich` | Filigran-Ecken, Zierrahmen, Kapitel-Vignetten |
-| `divider` | enum | `line` · `double` · `ornament` · `glyph` | Trenner zwischen Abschnitten und Einträgen |
+| `divider` | enum | `line` · `doubleLine` · `ornament` · `glyph` | Trenner zwischen Abschnitten und Einträgen |
 | `button` | enum | `outline` · `softFill` · `engraved` | Grundform aller Buttons |
 | `texture` | enum | `none` · `parchment` · `carbon` · `scanline` | Hintergrund-Textur (Asset im Preset-Ordner) |
 | `accentMode` | enum | `line` · `glow` | Akzent als Kante/Unterstrich oder als Schein |
@@ -194,8 +222,11 @@ Chronicle-Version soll einen älteren Vault nicht blockieren.
 5. **Fonts wählen** aus der kuratierten Liste. Neue Fonts dort ergänzen, nicht ad hoc referenzieren:
    die Liste ist das, was der Theme-Editor dem Nutzer anbietet.
 6. **In der Preset-Registry registrieren** (`lib/core/theme/presets.dart`).
-7. **Kontrast prüfen** — `textPrimary` auf `surface` und `textSecondary` auf `surfaceRaised`
-   erreichen WCAG AA (4.5:1). Bei Terminal und Grimoire ist das die Stelle, an der es klemmt.
+7. **`flutter test test/theme_test.dart` in der CI laufen lassen.** Der Test prüft das neue Preset
+   automatisch mit, sobald es in der Registry steht: WCAG AA für Text, 4.5:1 für jede
+   Eintragstyp-Farbe gegen die Grundfläche, und paarweiser RGB-Abstand ≥ 60 zwischen allen sieben.
+   Am Bildschirm fällt so etwas erst auf, wenn man die Typen nebeneinander sieht — und dann meist
+   zu spät. Ein Preset, das hier rot wird, ist nicht fertig.
 8. **Golden-Test** ergänzen, der eine Beispiel-Log-Ansicht im neuen Preset rendert. Der Test
    schützt davor, dass eine spätere Token-Umbenennung ein Preset still zerlegt.
 

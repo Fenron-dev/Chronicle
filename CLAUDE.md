@@ -98,12 +98,18 @@ Geprüft am **2026-09-19** gegen pub.dev. Flutter stable **3.47.5**, Dart **3.13
 | Backup (ZIP) | `archive` | ^4.3.0 |
 | Frontmatter | `yaml` | ^3.1.4 |
 | Markdown | `markdown` | ^7.3.1 |
-| Fonts | `google_fonts` | ^8.2.1 |
+| Fonts | *(gebündelte Asset-Schriften, kein `google_fonts`)* | — |
 | Hashing | `crypto` | ^3.0.7 |
 | HTTP (LLM) | `http` | ^1.6.0 |
 | Sync (später) | `shelf` / `shelf_router` | ^1.4.2 / ^1.1.4 |
 | Lints | `flutter_lints` | ^6.0.0 |
 | Codegen | `build_runner` | ^2.16.1 |
+
+**Kein `google_fonts`.** Das Paket lädt Schriften zur Laufzeit von
+`fonts.googleapis.com` nach und verletzt damit §2.3 (offline-first). Die Presets nennen nur
+Familiennamen; die Schriftdateien werden als Assets gebündelt und in `pubspec.yaml` unter
+`flutter: fonts:` deklariert. Fehlt eine Familie, fällt Flutter auf die Plattformschrift zurück —
+die App bleibt benutzbar, sie sieht nur weniger nach ihrem Preset aus.
 
 **Wichtig:** `sqlite3_flutter_libs` ist **EOL** („Not used anymore, update to version 3.x of
 package:sqlite3 instead"). `sqlite3` 3.x bringt die nativen Bibliotheken selbst mit — nicht mehr
@@ -217,6 +223,11 @@ minimal, modern) · *Terminal* (SciFi) · *Dossier* (moderne Erde). Umschalten �
 
 **Skin-Parameter** (`ChronicleSkin`): `ornament` · `divider` · `button` · `texture` · `accentMode`
 · `radiusScale`.
+
+**Zwei Zusagen, die `test/theme_test.dart` für jedes Preset erzwingt:** Text erfüllt WCAG AA
+(4.5:1; `textMuted` 3:1), und die sieben Eintragstyp-Farben sind paarweise unterscheidbar
+(RGB-Abstand ≥ 60) und gegen die Grundfläche lesbar. Beides ist kein Schönheitswunsch: das
+Play-Log lebt davon, dass man Erzählung und Mechanik beim Überfliegen auseinanderhält.
 
 Details und die Anleitung „neues Preset anlegen" stehen im Skill **`chronicle-theme`**.
 

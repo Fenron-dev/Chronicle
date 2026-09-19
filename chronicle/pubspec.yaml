@@ -27,8 +27,12 @@ dependencies:
   go_router: ^18.0.1
 
   # ─── Typografie ───────────────────────────────────────────────────────────
-  # Die Theme-Presets wählen Fonts aus einer kuratierten Google-Fonts-Liste.
-  google_fonts: ^8.2.1
+  # KEIN google_fonts: das Paket lädt Schriften zur Laufzeit von
+  # fonts.googleapis.com nach und verletzt damit offline-first (CLAUDE.md
+  # §2.3). Die Presets nennen nur Familiennamen; die Schriftdateien werden
+  # als Assets gebündelt und hier unter `flutter: fonts:` deklariert. Fehlt
+  # eine Familie, fällt Flutter auf die Plattformschrift zurück — die App
+  # bleibt benutzbar, sie sieht nur weniger nach ihrem Preset aus.
 
   # ─── Datenbank (Index, kein Speicherort) ──────────────────────────────────
   # drift/native.dart wird direkt genutzt, weil die DB aus einem nutzer-
