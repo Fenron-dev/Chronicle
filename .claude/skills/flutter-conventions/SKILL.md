@@ -325,6 +325,40 @@ dass echte Bugs in einem Meer von SnackBars untergehen.
 - **Golden-Tests je Theme-Preset** für die zentralen Ansichten (siehe Skill `chronicle-theme`).
 - Widget-Tests für Logik im Widget, nicht für Layout-Details — Layout-Tests brechen bei jeder
   Design-Änderung und werden dann pauschal aktualisiert, was ihren Wert aufhebt.
+
+### Zwei Fallen in Widget-Tests, die nicht scheitern, sondern hängen
+
+Beide kosten kein rotes Kreuz, sondern das Job-Limit — und damit die Rückmeldung.
+
+**`pumpAndSettle` wird nie fertig, wenn eine Endlos-Animation im Baum steht.** Ein unbestimmter
+`LinearProgressIndicator` oder `CircularProgressIndicator` plant für immer neue Frames ein; der
+Baum wird nie „ruhig". Genau das ist in Chronicle der Normalfall, denn der Vault-Picker zeigt
+während des Index-Aufbaus einen Fortschrittsbalken. Statt `pumpAndSettle` also eine feste Zahl
+Durchläufe:
+
+```dart
+for (var i = 0; i < 6; i++) {
+  await tester.pump(const Duration(milliseconds: 16));
+}
+```
+
+**Echte Datei-I/O gehört in `tester.runAsync`.** Der Rumpf von `testWidgets` läuft in einer
+Fake-Async-Zone. Ein Future, das auf die Platte wartet, wird dort nie fertig — der Test steht,
+bis das Zeitlimit greift.
+
+```dart
+await tester.runAsync(() async {
+  await container.read(activeVaultProvider.notifier).createAndOpen(dir.path, 'Test');
+});
+```
+
+**Und die Konsequenz daraus:** Zustandslogik gehört gar nicht in einen Widget-Test. Ob das
+Vault-Gate umschaltet, prüft ein `ProviderContainer` in einem gewöhnlichen `test()` — schneller,
+ohne Pump-Zyklen, und der eigentliche Punkt steht im Code statt dahinter. Der Widget-Test prüft
+dann nur noch, dass das Ergebnis auch gerendert wird.
+
+`flutter test --timeout 90s` in der CI sorgt dafür, dass ein Hänger nach anderthalb Minuten
+scheitert statt nach zehn.
 - Tests laufen in der CI (`flutter test --reporter expanded`).
 
 ---

@@ -18,20 +18,34 @@ import 'package:chronicle/data/vault/index_rebuilder.dart';
 import 'package:chronicle/data/vault/vault.dart';
 import 'package:chronicle/data/vault/vault_layout.dart';
 import 'package:chronicle/data/vault/vault_manager.dart';
+import 'package:chronicle/data/vault/vault_providers.dart';
 import 'package:chronicle/data/vault/vault_scanner.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  // shared_preferences (Zuletzt-geöffnet-Liste) braucht die Test-Bindung,
+  // auch außerhalb von Widget-Tests.
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   late Directory tempDir;
   late String root;
 
   setUp(() async {
+    SharedPreferences.setMockInitialValues({});
     tempDir = await Directory.systemTemp.createTemp('chronicle_test');
     root = tempDir.path;
   });
 
   tearDown(() async {
-    if (await tempDir.exists()) await tempDir.delete(recursive: true);
+    // Ein noch offenes Datenbank-Handle darf das Aufräumen nicht zum
+    // Testfehler machen — es ist ein Temp-Ordner.
+    try {
+      if (await tempDir.exists()) await tempDir.delete(recursive: true);
+    } on FileSystemException {
+      // Das Betriebssystem räumt ihn ohnehin ab.
+    }
   });
 
   /// Legt eine Notiz mit vollständigem Frontmatter an.
@@ -329,6 +343,56 @@ void main() {
 
       expect(after.noteCount, 1);
       expect(await db.countNotes(), 1);
+    });
+  });
+
+  group('Vault-Gate', () {
+    // Ohne Widgets: hier geht es um den Zustandsübergang, nicht ums Rendern.
+    // Ein Widget-Test dafür wäre langsamer und würde den eigentlichen Punkt
+    // hinter Pump-Zyklen verstecken.
+    test('schaltet beim Öffnen und Schließen um', () async {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      expect(container.read(hasOpenVaultProvider), isFalse);
+
+      final notifier = container.read(activeVaultProvider.notifier);
+      await notifier.createAndOpen(root, 'Testvault');
+
+      expect(container.read(hasOpenVaultProvider), isTrue);
+      expect(
+        container.read(activeVaultProvider).value?.vault.name,
+        'Testvault',
+      );
+
+      await notifier.close();
+      expect(container.read(hasOpenVaultProvider), isFalse);
+    });
+
+    test('meldet einen Ordner ohne Vault als Fehler, ohne zu werfen', () async {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      final plain = Directory('$root/kein_vault')..createSync();
+      await container.read(activeVaultProvider.notifier).openPath(plain.path);
+
+      final state = container.read(activeVaultProvider);
+      expect(state.hasError, isTrue);
+      expect(state.error, isA<VaultException>());
+      expect(container.read(hasOpenVaultProvider), isFalse);
+    });
+
+    test('merkt sich geöffnete Vaults in der Zuletzt-Liste', () async {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      await container
+          .read(activeVaultProvider.notifier)
+          .createAndOpen(root, 'Testvault');
+
+      final recent = await container.read(recentVaultsProvider.future);
+      expect(recent.single.path, root);
+      expect(recent.single.name, 'Testvault');
     });
   });
 }

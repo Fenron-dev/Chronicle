@@ -68,8 +68,12 @@ jobs:
       - name: Analyze
         run: flutter analyze
 
+      # --timeout: ein hängender Test soll nach 90 s scheitern, nicht das
+      # 20-Minuten-Job-Limit aufbrauchen. Ein einzelner Widget-Test lief so
+      # schon zehn Minuten in einen Timeout, bevor der Job abgeräumt wurde —
+      # die Rückmeldung kam dadurch viel zu spät.
       - name: Test
-        run: flutter test --reporter expanded
+        run: flutter test --reporter expanded --timeout 90s
 
   # ── Builds ──────────────────────────────────────────────────────────────────
   build:

@@ -3,9 +3,15 @@
 // ZWECK: Die App-Shell von außen — Vault-Gate, Desktop-/Mobile-Umschaltung,
 //        Theme-Anwendung.
 //
-// WARUM MIT ECHTEM VAULT: Das Gate ist der Kern von Schritt 3. Einen
-//        gefälschten Vault-Zustand zu injizieren würde genau die Verdrahtung
-//        überspringen, die hier schiefgehen kann.
+// ZWEI REGELN FÜR WIDGET-TESTS IN DIESEM PROJEKT, teuer gelernt:
+//
+//   1. Echte Datei-I/O gehört in `tester.runAsync`. Der Rumpf von
+//      `testWidgets` läuft in einer Fake-Async-Zone; ein Future, das auf die
+//      Platte wartet, wird dort nie fertig.
+//   2. Kein `pumpAndSettle`, solange ein unbestimmter Fortschrittsindikator
+//      sichtbar sein kann. Der animiert endlos, also wird der Baum nie
+//      „ruhig" — der Test lief zehn Minuten in den Timeout, statt zu
+//      scheitern. Stattdessen eine feste Zahl `pump`-Durchläufe.
 //
 // SCHRITT: 3
 
@@ -27,21 +33,57 @@ void main() {
   });
 
   tearDown(() async {
-    if (await tempDir.exists()) await tempDir.delete(recursive: true);
+    // Die Index-Datenbank kann die Datei noch offen halten; ein
+    // fehlgeschlagenes Aufräumen darf den Test nicht rot färben.
+    try {
+      if (await tempDir.exists()) await tempDir.delete(recursive: true);
+    } on FileSystemException {
+      // Temp-Ordner, das Betriebssystem räumt ihn ohnehin ab.
+    }
   });
 
-  /// Setzt eine Desktop-Fenstergröße für diesen Test.
   void useSize(WidgetTester tester, Size size) {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
   }
 
+  /// Pumpt eine feste Zahl Frames — der Ersatz für `pumpAndSettle`, wenn eine
+  /// Endlos-Animation im Baum stehen kann.
+  Future<void> pumpFrames(WidgetTester tester, {int count = 6}) async {
+    for (var i = 0; i < count; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+  }
+
+  /// Baut die App auf einem Container, in dem der Vault bereits offen ist.
+  Future<ProviderContainer> pumpWithOpenVault(WidgetTester tester) async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    // Vor dem Pumpen und in echter Async-Zone: hier wird wirklich ein Ordner
+    // angelegt und ein Index gebaut.
+    await tester.runAsync(() async {
+      await container
+          .read(activeVaultProvider.notifier)
+          .createAndOpen(tempDir.path, 'Testvault');
+    });
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const ChronicleApp(),
+      ),
+    );
+    await pumpFrames(tester);
+    return container;
+  }
+
   testWidgets('startet ohne Vault im Picker', (tester) async {
     useSize(tester, const Size(1600, 1000));
 
     await tester.pumpWidget(const ProviderScope(child: ChronicleApp()));
-    await tester.pumpAndSettle();
+    await pumpFrames(tester);
 
     expect(find.text('Vault öffnen…'), findsOneWidget);
     expect(find.text('Neuen Vault anlegen…'), findsOneWidget);
@@ -51,22 +93,7 @@ void main() {
     tester,
   ) async {
     useSize(tester, const Size(1600, 1000));
-
-    final container = ProviderContainer();
-    addTearDown(container.dispose);
-
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: const ChronicleApp(),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await container
-        .read(activeVaultProvider.notifier)
-        .createAndOpen(tempDir.path, 'Testvault');
-    await tester.pumpAndSettle();
+    await pumpWithOpenVault(tester);
 
     // Das Gate hat umgeschaltet: Play-Log statt Picker.
     expect(find.text('Vault öffnen…'), findsNothing);
@@ -82,47 +109,8 @@ void main() {
 
   testWidgets('zeigt im schmalen Fenster die Bottom-Nav', (tester) async {
     useSize(tester, const Size(500, 900));
-
-    final container = ProviderContainer();
-    addTearDown(container.dispose);
-
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: const ChronicleApp(),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await container
-        .read(activeVaultProvider.notifier)
-        .createAndOpen(tempDir.path, 'Testvault');
-    await tester.pumpAndSettle();
+    await pumpWithOpenVault(tester);
 
     expect(find.byType(NavigationBar), findsOneWidget);
-  });
-
-  testWidgets('schließt den Vault zurück in den Picker', (tester) async {
-    useSize(tester, const Size(1600, 1000));
-
-    final container = ProviderContainer();
-    addTearDown(container.dispose);
-
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: const ChronicleApp(),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    final notifier = container.read(activeVaultProvider.notifier);
-    await notifier.createAndOpen(tempDir.path, 'Testvault');
-    await tester.pumpAndSettle();
-
-    await notifier.close();
-    await tester.pumpAndSettle();
-
-    expect(find.text('Vault öffnen…'), findsOneWidget);
   });
 }
