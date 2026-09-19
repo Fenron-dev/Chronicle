@@ -255,8 +255,8 @@ Analyzer/Tests in CI grün, kurze Zusammenfassung, dann weiter.
 
 | Schritt | Inhalt | Status |
 |---|---|---|
-| **1** | Repo-Setup, `CLAUDE.md`, Skills, CI-Workflows (Analyzer/Test/Build), Dart-Scaffold | **aktuell** |
-| **2** | Theme-Layer (4 Presets → `ThemeData` + `ChronicleSkin`) + App-Shell (`ResponsiveShell`, 3-Panel-Desktop, go_router `StatefulShellRoute`) | offen |
+| **1** | Repo-Setup, `CLAUDE.md`, Skills, CI-Workflows (Analyzer/Test/Build), Dart-Scaffold | **erledigt** |
+| **2** | Theme-Layer (4 Presets → `ThemeData` + `ChronicleSkin`) + App-Shell (`ResponsiveShell`, 3-Panel-Desktop, go_router `StatefulShellRoute`) | **aktuell** |
 | **3** | Vault-Format: Ordner öffnen/anlegen, Datei-Scan, `index.db`-Rebuild (Drift + FTS5), Multi-Vault-Picker, Backup/Restore | offen |
 | **4** | Play-Log (getippte Einträge, Sichtbarkeits-Toggle, Wikilinks) | offen |
 | **5** | Codex-/Markdown-Editor (Source/Reading, Frontmatter, Callouts, Embeds, Hover-Preview) | offen |
