@@ -15,10 +15,10 @@
 
 import 'dart:io';
 
-import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../db/database.dart';
+import '../db/vault_note.dart';
 import 'index_rebuilder.dart';
 import 'recent_vaults_store.dart';
 import 'vault.dart';
@@ -163,16 +163,10 @@ bool hasOpenVault(Ref ref) =>
 /// Bewusst autoDispose: die Liste wird neu geladen, wenn der Baum wieder
 /// sichtbar wird — sie hängt am Index, der sich bei jedem Rebuild ändert.
 @riverpod
-Future<List<Note>> vaultNotes(Ref ref) async {
+Future<List<VaultNote>> vaultNotes(Ref ref) async {
   final session = ref.watch(activeVaultProvider).valueOrNull;
   if (session == null) return const [];
-
-  final db = session.database;
-  return (db.select(db.notes)..orderBy([
-        (t) => OrderingTerm.asc(t.scope),
-        (t) => OrderingTerm.asc(t.relPath),
-      ]))
-      .get();
+  return session.database.allNotes();
 }
 
 /// Volltextsuche im aktiven Vault.

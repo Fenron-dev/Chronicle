@@ -21,6 +21,7 @@ import 'package:drift/native.dart';
 
 import 'tables/edges.dart';
 import 'tables/notes.dart';
+import 'vault_note.dart';
 
 part 'database.g.dart';
 
@@ -165,22 +166,47 @@ class ChronicleDatabase extends _$ChronicleDatabase {
   /// Alle Notizen, die auf [noteId] verweisen.
   ///
   /// Genau eine Query — dafür gibt es die generische Edge-Tabelle.
-  Future<List<Note>> backlinksFor(String noteId) async {
+  Future<List<VaultNote>> backlinksFor(String noteId) async {
     final query = select(notes).join([
       innerJoin(edges, edges.fromId.equalsExp(notes.id)),
     ])..where(edges.toId.equals(noteId));
 
     final rows = await query.get();
-    return [for (final row in rows) row.readTable(notes)];
+    return [for (final row in rows) _toVaultNote(row.readTable(notes))];
+  }
+
+  /// Alle Notizen des Index, gruppierbar nach Scope und Besitzer.
+  Future<List<VaultNote>> allNotes() async {
+    final rows =
+        await (select(notes)..orderBy([
+              (t) => OrderingTerm.asc(t.scope),
+              (t) => OrderingTerm.asc(t.relPath),
+            ]))
+            .get();
+    return [for (final row in rows) _toVaultNote(row)];
   }
 
   /// Alle Notizen eines Typs, neueste zuerst.
-  Future<List<Note>> notesOfType(String type) {
-    return (select(notes)
-          ..where((t) => t.type.equals(type))
-          ..orderBy([(t) => OrderingTerm.desc(t.updated)]))
-        .get();
+  Future<List<VaultNote>> notesOfType(String type) async {
+    final rows =
+        await (select(notes)
+              ..where((t) => t.type.equals(type))
+              ..orderBy([(t) => OrderingTerm.desc(t.updated)]))
+            .get();
+    return [for (final row in rows) _toVaultNote(row)];
   }
+
+  /// Übersetzt eine Drift-Zeile in das UI-Modell.
+  VaultNote _toVaultNote(Note row) => VaultNote(
+    id: row.id,
+    type: row.type,
+    title: row.title,
+    relPath: row.relPath,
+    scope: row.scope,
+    ownerSlug: row.ownerSlug,
+    updated: row.updated,
+    tags: VaultNote.parseTags(row.tagsJson),
+  );
 
   Future<int> countNotes() async {
     final row = await customSelect(

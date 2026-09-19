@@ -261,6 +261,33 @@ Generiert werden Riverpod-Provider (`*.g.dart`) und Drift-Code (`*.g.dart` / `*.
 
 ---
 
+## Die Build-Reihenfolge der Generatoren
+
+`riverpod_generator` läuft **vor** `drift_dev`. Eine von Drift generierte Klasse — `Note`,
+`Edge`, `NotesCompanion` — existiert also noch nicht, wenn Riverpod seinen Code schreibt. Taucht
+eine davon in der **Signatur** eines `@riverpod`-Providers auf, bricht der Lauf ab mit:
+
+```
+E riverpod_generator on lib/…: InvalidTypeException: The type is invalid
+  and cannot be converted to code.
+```
+
+Die Fehlermeldung nennt die Datei, nicht die Zeile — gesucht wird der Provider, dessen Rückgabetyp
+ganz aus generiertem Code stammt. Handgeschriebene Klassen sind unproblematisch, auch wenn ihre
+*Oberklasse* generiert ist: `ChronicleDatabase extends _$ChronicleDatabase` steht als Klasse im
+Quelltext und löst auf; `Note` steht ausschließlich in der `part`-Datei und löst nicht auf.
+
+**Die Lösung ist keine Notlösung, sondern die richtige Schichtung:** Ein Provider gibt ein
+handgeschriebenes Modell zurück (`VaultNote`), und das DAO übersetzt die Drift-Zeile dorthin.
+Genau das verlangt die Regel „Widgets sehen nie eine Drift-Query" ohnehin — eine Drift-Zeile im
+Widget-Baum macht jede Schema-Änderung zu einer UI-Änderung. Die Build-Reihenfolge erzwingt hier
+nur, was sonst Disziplin wäre.
+
+Drift-Typen bleiben damit auf die Datenschicht beschränkt: `database.dart` und was direkt für sie
+schreibt. Keine dieser Dateien enthält `@riverpod`.
+
+---
+
 ## Fehlerbehandlung
 
 Die Leitfrage: **Ist das ein Nutzerfehler, ein Umgebungsfehler oder ein Programmierfehler?**

@@ -12,7 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/chronicle_skin.dart';
 import '../../core/theme/theme_access.dart';
-import '../../data/db/database.dart';
+import '../../data/db/vault_note.dart';
 import '../../data/vault/vault_providers.dart';
 import '../../widgets/skin_divider.dart';
 import 'destinations.dart';
@@ -157,7 +157,7 @@ class _VaultTree extends ConsumerWidget {
           );
         }
 
-        final groups = <String, List<Note>>{};
+        final groups = <String, List<VaultNote>>{};
         for (final note in rows) {
           final label = switch (note.scope) {
             'system' => 'System · \${note.ownerSlug ?? "?"}',
@@ -183,7 +183,7 @@ class _TreeGroup extends StatelessWidget {
   const _TreeGroup({required this.label, required this.notes});
 
   final String label;
-  final List<Note> notes;
+  final List<VaultNote> notes;
 
   @override
   Widget build(BuildContext context) {
