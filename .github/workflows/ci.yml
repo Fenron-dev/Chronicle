@@ -1,0 +1,237 @@
+# Datei: .github/workflows/ci.yml
+#
+# ZWECK: Einziger Weg, Chronicle zu prüfen und zu bauen. Lokale Builds sind
+#        projektweit verboten (CLAUDE.md §2.1) — dieser Workflow ist der Ersatz.
+#
+# AUFBAU: Gate (analyze + test) → Matrix-Builds → Release bei v*-Tag.
+#         Was das Gate nicht besteht, wird gar nicht erst gebaut.
+#
+# VORLAGE: OracleVault .github/workflows/ci.yml
+
+name: CI
+
+on:
+  push:
+    branches: [main, 'claude/**', 'ci/**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+# Ein laufender Build pro Branch reicht — ein neuer Push macht den vorherigen
+# überflüssig.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: 3.47.5
+
+jobs:
+  # ── Gate ────────────────────────────────────────────────────────────────────
+  # Braucht keine nativen Plattform-Ordner: `flutter analyze` und `flutter test`
+  # arbeiten rein auf dem Dart-Code. Deshalb läuft dieser Job auch, bevor
+  # scaffold.yml die Runner-Ordner erzeugt hat.
+  analyze-test:
+    name: Analyze & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: chronicle
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      # Pub-Cache getrennt vom SDK-Cache: der Schlüssel hängt an pubspec.yaml,
+      # nicht an der Flutter-Version. (pubspec.lock ist nicht eingecheckt,
+      # solange das Projekt jung ist und wir Updates mitnehmen wollen.)
+      - uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('chronicle/pubspec.yaml') }}
+          restore-keys: pub-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed lib test
+
+      - name: Run code generation (Drift + Riverpod)
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test --reporter expanded
+
+  # ── Builds ──────────────────────────────────────────────────────────────────
+  build:
+    name: Build ${{ matrix.target }}
+    needs: analyze-test
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: chronicle
+    strategy:
+      # Ein kaputtes Ziel soll die anderen nicht abbrechen — sonst sieht man pro
+      # Lauf immer nur den ersten Fehler.
+      fail-fast: false
+      matrix:
+        include:
+          - target: macos
+            os: macos-latest
+            build: flutter build macos --release
+            artifact: chronicle/build/macos/Build/Products/Release/chronicle-macos.zip
+          - target: ios
+            os: macos-latest
+            build: flutter build ios --release --no-codesign
+            artifact: chronicle/build/ios/iphoneos/chronicle-ios.zip
+          - target: android
+            os: ubuntu-latest
+            build: flutter build apk --release
+            artifact: chronicle/build/app/outputs/flutter-apk/app-release.apk
+          - target: windows
+            os: windows-latest
+            build: flutter build windows --release
+            artifact: chronicle/build/windows/x64/runner/Release
+          - target: linux
+            os: ubuntu-latest
+            build: flutter build linux --release
+            artifact: chronicle/build/linux/x64/release/bundle
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v4
+        if: matrix.target == 'android'
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Linux build dependencies
+        if: matrix.target == 'linux'
+        # libsecret: Backend von flutter_secure_storage unter Linux.
+        # libmpv:    Backend von media_kit unter Linux.
+        #
+        # DEBIAN_FRONTEND + Lock::Timeout sind kein Zierrat: ohne sie kann der
+        # Schritt stundenlang hängen, weil auf dem Runner unattended-upgrades
+        # läuft und apt sonst unbegrenzt auf die dpkg-Lock wartet.
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo apt-get -o DPkg::Lock::Timeout=180 update -qq
+          sudo apt-get -o DPkg::Lock::Timeout=180 install -y --no-install-recommends \
+            ninja-build libgtk-3-dev libsecret-1-dev libmpv-dev mpv
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('chronicle/pubspec.yaml') }}
+          restore-keys: pub-${{ runner.os }}-
+
+      - uses: actions/cache@v4
+        if: matrix.target == 'android'
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('chronicle/android/**/*.gradle*') }}
+          restore-keys: gradle-
+
+      # Die nativen Runner-Ordner liegen anfangs nicht im Repo, weil sie nur mit
+      # einem lokalen Build entstehen könnten — und der ist verboten (§2.1).
+      # `flutter create` legt genau die fehlenden Teile an und lässt vorhandene
+      # unberührt. Sobald scaffold.yml sie eingecheckt hat, ist der Schritt ein
+      # No-op und native Anpassungen (media_kit, Icons, Entitlements) bleiben
+      # erhalten.
+      - name: Ensure platform scaffolding
+        shell: bash
+        run: |
+          flutter create --platforms=${{ matrix.target }} \
+            --project-name chronicle --org dev.fenron .
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run code generation (Drift + Riverpod)
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Build
+        run: ${{ matrix.build }}
+
+      # .app-Bundles vor dem Upload packen: sonst zerlegt upload-artifact sie in
+      # Einzeldateien und verliert die Symlinks.
+      - name: Package macOS app
+        if: matrix.target == 'macos'
+        run: |
+          cd build/macos/Build/Products/Release
+          ditto -c -k --keepParent chronicle.app chronicle-macos.zip
+
+      - name: Package iOS app (unsigniert)
+        if: matrix.target == 'ios'
+        run: |
+          cd build/ios/iphoneos
+          ditto -c -k --keepParent Runner.app chronicle-ios.zip
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: chronicle-${{ matrix.target }}
+          path: ${{ matrix.artifact }}
+          if-no-files-found: error
+
+  # ── Release ─────────────────────────────────────────────────────────────────
+  # Nur bei einem v*-Tag: hängt alle Artefakte an das GitHub-Release.
+  release:
+    name: Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v7
+        with:
+          path: artifacts
+
+      - name: Attach artifacts to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # nullglob: ohne das bleibt ein nicht passendes Muster als Literal
+          # stehen und der Upload stolpert über eine Datei "*.apk".
+          shopt -s nullglob
+          cd artifacts
+          for dir in */; do
+            name="${dir%/}"
+            # Fertige Dateien (zip/apk) heraufheben und nach dem Ziel benennen,
+            # sonst hängt am Release ein nichtssagendes app-release.apk.
+            found=0
+            for f in "$dir"*.zip "$dir"*.apk; do
+              cp "$f" "./$name.${f##*.}"
+              found=1
+            done
+            # Verzeichnis-Artefakte (Windows/Linux) zippen.
+            [ "$found" -eq 0 ] && (cd "$dir" && zip -qr "../$name.zip" .)
+          done
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
+            || gh release create "$GITHUB_REF_NAME" --generate-notes --title "$GITHUB_REF_NAME"
+          for f in *.zip *.apk; do
+            gh release upload "$GITHUB_REF_NAME" "$f" --clobber
+          done

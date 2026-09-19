@@ -1,0 +1,39 @@
+# Datei: chronicle/analysis_options.yaml
+#
+# ZWECK: Analyzer-Regeln. `flutter analyze` ist das CI-Gate (CLAUDE.md §10) —
+#        was hier steht, entscheidet, ob ein Push durchgeht.
+
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    # Generierte Dateien sind nicht eingecheckt, entstehen aber in der CI vor
+    # dem Analyzer-Lauf. Sie müssen unsere Regeln nicht erfüllen.
+    - "**/*.g.dart"
+    - "**/*.drift.dart"
+  errors:
+    # Ein fehlendes await ist in der Datei-I/O dieses Projekts fast immer ein
+    # Bug — ein Vault kann auf einem USB-Stick liegen, der mitten im Schreiben
+    # abgezogen wird.
+    unawaited_futures: error
+    # Rohe TODOs sollen auffallen, aber nicht blockieren.
+    todo: info
+
+linter:
+  rules:
+    # Konstante Widgets sparen Rebuilds — im Play-Log mit vielen Einträgen
+    # merkbar.
+    - prefer_const_constructors
+    - prefer_const_declarations
+    - prefer_const_literals_to_create_immutables
+    # print() ist in einer Desktop-App unsichtbar; Logging läuft über core/.
+    - avoid_print
+    # Öffentliche API in domain/ und data/ wird von anderen Schichten benutzt.
+    - always_declare_return_types
+    # Relative Importe innerhalb von lib/ — so wie in OracleVault.
+    - prefer_relative_imports
+    # Muss hier aktiviert sein, damit die Hochstufung auf `error` oben greift:
+    # eine Severity-Angabe allein schaltet die Regel nicht ein.
+    - unawaited_futures
+    - unnecessary_await_in_return
+    - use_super_parameters

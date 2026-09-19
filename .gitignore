@@ -1,0 +1,49 @@
+# ── Konzept-Dokument ────────────────────────────────────────────────────────
+# Bleibt lokal, wie in OracleVault: das Repo ist öffentlich, das Konzept nicht.
+# Es liegt unter docs/Konzept.md und ist in inhaltlichen Fragen maßgeblich
+# (CLAUDE.md §9). Soll es doch ins Repo, diese Zeile entfernen.
+docs/Konzept.md
+
+# ── Flutter / Dart ──────────────────────────────────────────────────────────
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+*.iml
+
+# Generierte Dateien entstehen in der CI (CLAUDE.md §2.1) und sind
+# reproduzierbar — eingecheckt würden sie jeden Diff fluten.
+*.g.dart
+*.freezed.dart
+*.drift.dart
+*.mocks.dart
+
+# pubspec.lock bleibt draußen, solange das Projekt jung ist: wir wollen
+# Paket-Updates mitnehmen statt sie manuell nachzuziehen. Sobald ein Release
+# reproduzierbar sein muss, wird die Datei eingecheckt.
+pubspec.lock
+
+# ── Plattform-Build-Artefakte ───────────────────────────────────────────────
+android/.gradle/
+android/local.properties
+android/key.properties
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+macos/Pods/
+macos/Flutter/ephemeral/
+linux/flutter/ephemeral/
+windows/flutter/ephemeral/
+
+# ── Testvaults ──────────────────────────────────────────────────────────────
+# Ein Vault ist Nutzerdaten und gehört nie ins Repo.
+*.chronicle-vault/
+/testvault/
+
+# ── Editor / OS ─────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

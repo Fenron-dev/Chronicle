@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git fetch *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git rev-list *)"
+    ],
+    "deny": [
+      "Bash(flutter build *)",
+      "Bash(flutter run *)",
+      "Bash(dart run build_runner *)"
+    ]
+  }
+}

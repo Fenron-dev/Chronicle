@@ -1,0 +1,98 @@
+name: chronicle
+description: >-
+  Portable, lokal-first Flutter-App zum Spielen von Journaling-Solo-RPGs.
+  Verwaltet Spielsysteme, führt durchs Spiel und hält den Verlauf als Journal fest.
+publish_to: 'none'
+
+# Versionierung: Major.Minor.Patch+Build — Schritt 1–3 = 0.1.x
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.0
+  flutter: '>=3.47.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # ─── State Management ─────────────────────────────────────────────────────
+  # Riverpod 3: `Ref` ist nicht mehr generisch. Codebeispiele aus der
+  # Riverpod-2-Ära (auch OracleVault) müssen beim Portieren angepasst werden.
+  flutter_riverpod: ^3.4.3
+  riverpod_annotation: ^4.0.7
+
+  # ─── Routing ──────────────────────────────────────────────────────────────
+  # StatefulShellRoute für persistente Tab-Stacks: ein Wechsel Play-Log ↔ Codex
+  # verliert die Scroll-Position nicht.
+  go_router: ^18.0.1
+
+  # ─── Typografie ───────────────────────────────────────────────────────────
+  # Die Theme-Presets wählen Fonts aus einer kuratierten Google-Fonts-Liste.
+  google_fonts: ^8.2.1
+
+  # ─── Datenbank (Index, kein Speicherort) ──────────────────────────────────
+  # drift/native.dart wird direkt genutzt, weil die DB aus einem nutzer-
+  # gewählten Vault-Ordner geöffnet wird — nicht aus dem App-Dokumentenpfad.
+  # Deshalb auch kein drift_flutter (hängt noch an den EOL-Paketen).
+  drift: ^2.35.0
+  # sqlite3 3.x bringt die nativen Bibliotheken selbst mit.
+  # sqlite3_flutter_libs ist EOL und wird NICHT hinzugefügt.
+  # Direkter Zugriff zusätzlich für `VACUUM INTO` (konsistente Backup-
+  # Snapshots; läuft nicht innerhalb einer Transaktion und damit nicht aus
+  # einer Drift-Migration heraus).
+  sqlite3: ^3.6.0
+
+  # ─── Dateisystem & Vault-Auswahl ──────────────────────────────────────────
+  path: ^1.9.1
+  path_provider: ^2.1.6
+  # file_picker: Ordner-Auswahl für „Vault öffnen…" und „Vault anlegen…".
+  file_picker: ^13.1.0
+
+  # ─── App-weite Einstellungen ──────────────────────────────────────────────
+  # Nur Maschinenspezifisches (Recent-Vaults, Fensterzustand). Vault-Daten
+  # liegen im Vault, nicht hier.
+  shared_preferences: ^2.5.5
+
+  # ─── Vault-Format ─────────────────────────────────────────────────────────
+  # uuid: Primärschlüssel aller Objekte — steht im Frontmatter, nicht nur in
+  # der DB, sonst überlebt die Identität keinen Index-Rebuild.
+  uuid: ^4.6.0
+  # yaml: Frontmatter-Parsing.
+  yaml: ^3.1.4
+  # crypto: SHA-256 für Medien-Dublettenerkennung (gestreamt).
+  crypto: ^3.0.7
+  # archive: ZIP für Backup/Restore und System-/Game-Bundles.
+  archive: ^4.3.0
+
+  # ─── Hilfspakete ──────────────────────────────────────────────────────────
+  # meta: @visibleForTesting in domain/ und data/ ohne Flutter-Import.
+  meta: ^1.19.0
+  intl: ^0.20.3
+
+  # ─── Später, Versionen geprüft am 2026-09-19 (siehe CLAUDE.md §3) ─────────
+  # Erst eintragen, wenn der zugehörige Schritt beginnt — jedes Paket kostet
+  # CI-Zeit und nativen Konfigurationsaufwand.
+  #   markdown: ^7.3.1               # Schritt 5  — Codex-Editor
+  #   flutter_secure_storage: ^11.2.0 # Schritt 11 — API-Keys (nie im Vault!)
+  #   http: ^1.6.0                   # Schritt 11 — OpenAI-kompatibler Client
+  #   media_kit: ^1.2.6              # Medien-Embeds (Audio/Video)
+  #   media_kit_video: ^2.0.1
+  #   media_kit_libs_video: ^1.0.7
+  #   shelf: ^1.4.2                  # Sync (nach MVP)
+  #   shelf_router: ^1.1.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+  # ─── Code-Generierung ─────────────────────────────────────────────────────
+  # Läuft ausschließlich in der CI:
+  #   dart run build_runner build --delete-conflicting-outputs
+  # Generierte Dateien sind nicht eingecheckt (siehe .gitignore).
+  build_runner: ^2.16.1
+  drift_dev: ^2.35.0
+  riverpod_generator: ^4.0.9
+
+flutter:
+  uses-material-design: true

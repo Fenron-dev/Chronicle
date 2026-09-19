@@ -1,0 +1,75 @@
+# Datei: .github/workflows/scaffold.yml
+#
+# ZWECK: Erzeugt die nativen Plattform-Ordner (android/, ios/, linux/, macos/,
+#        windows/) per `flutter create` und committet sie zurück.
+#
+# WARUM ALS WORKFLOW: Diese Ordner entstehen normalerweise beim ersten lokalen
+#        `flutter create` — und lokale Builds sind projektweit verboten
+#        (CLAUDE.md §2.1). Also erzeugt sie die CI.
+#
+# WANN AUSFÜHREN: Einmalig zu Projektbeginn, und später, wenn eine Plattform
+#        dazukommt. Danach sind die Ordner eingecheckt und nativ anpassbar
+#        (media_kit-Konfiguration, App-Icons, Entitlements) — ci.yml lässt
+#        vorhandene Ordner unberührt.
+#
+# Manuell starten: Actions → "Scaffold platform folders" → Run workflow.
+
+name: Scaffold platform folders
+
+on:
+  workflow_dispatch:
+    inputs:
+      platforms:
+        description: 'Plattformen (Komma-getrennt)'
+        required: true
+        default: 'windows,linux,macos,android,ios'
+
+env:
+  FLUTTER_VERSION: 3.47.5
+
+jobs:
+  scaffold:
+    name: flutter create
+    # macOS-Runner, weil nur dort auch die ios/- und macos/-Ordner erzeugt
+    # werden können.
+    runs-on: macos-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Create platform folders
+        working-directory: chronicle
+        run: |
+          flutter create --platforms=${{ inputs.platforms }} \
+            --project-name chronicle --org dev.fenron .
+
+      # `flutter create` legt neben den Plattform-Ordnern auch Beispieldateien
+      # an. Unsere eigenen Quellen sind bereits vorhanden und dürfen nicht
+      # überschrieben werden — deshalb werden sie hier zurückgesetzt.
+      - name: Restore our own sources
+        run: |
+          git checkout -- chronicle/lib chronicle/test chronicle/pubspec.yaml \
+            chronicle/analysis_options.yaml chronicle/README.md 2>/dev/null || true
+
+      - name: Commit and push
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A chronicle
+          if git diff --cached --quiet; then
+            echo "Keine Änderungen — Plattform-Ordner sind bereits aktuell."
+            exit 0
+          fi
+          git commit \
+            -m "chore(scaffold): Plattform-Ordner für ${{ inputs.platforms }} erzeugen" \
+            -m "Erzeugt in der CI, weil lokale Builds projektweit verboten sind (CLAUDE.md §2.1)."
+          git push origin HEAD:${{ github.ref_name }}
