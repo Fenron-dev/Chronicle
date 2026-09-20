@@ -120,7 +120,9 @@ class _CodexScreenState extends ConsumerState<CodexScreen> {
               _mode == CodexMode.source
                   ? _SourceEditor(controller: _editor, focus: _focus)
                   : _Reading(onWikiLinkTap: _openLink),
-            _ => const SizedBox.shrink(),
+            // Kein Default-Zweig: AsyncValue ist versiegelt, und die fünf
+            // Fälle decken es vollständig ab. Ein `_` wäre unerreichbar —
+            // und würde einen sechsten Fall später stumm verschlucken.
           },
         ),
       ],
