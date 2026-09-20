@@ -132,6 +132,49 @@ class DiceExpression {
     return buffer.toString();
   }
 
+  /// Kleinster und größter möglicher Gesamtwert.
+  ///
+  /// Gebraucht, um eine Würfeltabelle auf Lücken zu prüfen: ohne die
+  /// Spannweite wüsste niemand, dass bei `2d6` die 2 und die 12 abgedeckt
+  /// sein müssen — und die Lücke fiele erst beim Würfeln auf, mitten im
+  /// Spiel.
+  (int, int) get range {
+    var low = 0;
+    var high = 0;
+
+    for (final term in terms) {
+      final (termLow, termHigh) = switch (term) {
+        ConstantTerm(:final value) => (value, value),
+        DiceRollTerm(
+          :final count,
+          :final sides,
+          :final keepMode,
+          :final keepCount,
+        ) =>
+          () {
+            final counted = switch (keepMode) {
+              KeepMode.all => count,
+              KeepMode.keepHighest || KeepMode.keepLowest => keepCount,
+              KeepMode.dropHighest ||
+              KeepMode.dropLowest => (count - keepCount).clamp(0, count),
+            };
+            return (counted, counted * sides);
+          }(),
+      };
+
+      // Bei einem abgezogenen Term tauschen die Grenzen die Rollen.
+      if (term.negated) {
+        low -= termHigh;
+        high -= termLow;
+      } else {
+        low += termLow;
+        high += termHigh;
+      }
+    }
+
+    return (low, high);
+  }
+
   /// Liest [source]. Wirft [DiceParseException] bei ungültiger Eingabe.
   static DiceExpression parse(String source) => _DiceParser(source).parse();
 

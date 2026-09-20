@@ -10,6 +10,7 @@ import 'dart:math';
 
 import 'package:chronicle/domain/roll_engine/dice.dart';
 import 'package:chronicle/domain/roll_engine/oracle_table.dart';
+import 'package:chronicle/domain/roll_engine/table_markdown.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Ein Würfel, der eine vorgegebene Folge liefert.
@@ -456,6 +457,175 @@ void main() {
       final state = DeckState.fromJson(const {'drawPile': 'unsinn'});
       expect(state.drawPile, isEmpty);
       expect(state.hand, isEmpty);
+    });
+  });
+
+  _tableFormatTests();
+}
+
+// ── Dateiformat der Tabellen ────────────────────────────────────────────────
+
+void _tableFormatTests() {
+  group('Tabellen-Dateiformat', () {
+    test('liest schlichte Einträge', () {
+      final entries = parseTableEntries(
+        '# Wetter\n'
+        '\n'
+        'Erklärender Text, der keine Liste ist.\n'
+        '\n'
+        '- Nebel\n'
+        '* Regen\n'
+        '1. Sturm\n',
+      );
+      expect(entries.map((e) => e.text), ['Nebel', 'Regen', 'Sturm']);
+      expect(entries.every((e) => e.weight == 1), isTrue);
+    });
+
+    test('liest Trefferbereiche', () {
+      final entries = parseTableEntries(
+        '- 2-4 | Nebel\n'
+        '- 5–9 | Regen\n'
+        '- 12 | Sturm\n',
+      );
+      expect((entries[0].min, entries[0].max), (2, 4));
+      // Der Gedankenstrich kommt aus jeder Autokorrektur.
+      expect((entries[1].min, entries[1].max), (5, 9));
+      expect((entries[2].min, entries[2].max), (12, 12));
+      expect(entries[2].text, 'Sturm');
+    });
+
+    test('dreht einen verdrehten Bereich um', () {
+      final entries = parseTableEntries('- 9-5 | Verdreht\n');
+      expect((entries.single.min, entries.single.max), (5, 9));
+    });
+
+    test('liest Gewichte in beiden Schreibweisen', () {
+      final entries = parseTableEntries('- x3 | Häufig\n- 2x | Mittel\n');
+      expect(entries.map((e) => e.weight), [3, 2]);
+      expect(entries.map((e) => e.text), ['Häufig', 'Mittel']);
+    });
+
+    test('liest Subtabellen-Verweise', () {
+      final entries = parseTableEntries('- => Namensliste\n- → Kultur\n');
+      expect(entries.map((e) => e.subtable), ['Namensliste', 'Kultur']);
+    });
+
+    test('lässt Platzhalter im Text unangetastet', () {
+      final entry = parseTableEntries('- [Kultur] [Epitheton]\n').single;
+      expect(entry.text, '[Kultur] [Epitheton]');
+      expect(entry.subtable, isNull);
+    });
+
+    test('ein Text mit Bindestrich ist kein Bereich', () {
+      // Ohne den `|`-Trenner ist nichts davon eine Annotation.
+      final entry = parseTableEntries('- 2-4 Wachen am Tor\n').single;
+      expect(entry.text, '2-4 Wachen am Tor');
+      expect(entry.min, isNull);
+    });
+
+    test('überlebt den Weg durch die Serialisierung', () {
+      const original = [
+        TableEntry(text: 'Nebel', min: 2, max: 4),
+        TableEntry(text: 'Sturm', min: 12, max: 12),
+        TableEntry(text: 'Häufig', weight: 3),
+        TableEntry(text: 'Schlicht'),
+        TableEntry(text: '', subtable: 'Kultur'),
+      ];
+      final wieder = parseTableEntries(serializeTableEntries(original));
+
+      expect(wieder, hasLength(original.length));
+      for (final (index, entry) in wieder.indexed) {
+        expect(entry.text, original[index].text, reason: 'Text $index');
+        expect(entry.weight, original[index].weight, reason: 'Gewicht $index');
+        expect(entry.min, original[index].min, reason: 'min $index');
+        expect(entry.max, original[index].max, reason: 'max $index');
+        expect(entry.subtable, original[index].subtable, reason: 'sub $index');
+      }
+    });
+
+    test('schreibt keine Annotation, wo sie nichts aussagt', () {
+      final text = serializeTableEntries(const [TableEntry(text: 'Schlicht')]);
+      expect(text.trim(), '- Schlicht');
+    });
+  });
+
+  group('Spannweite eines Würfelausdrucks', () {
+    (int, int) range(String source) => DiceExpression.parse(source).range;
+
+    test('einfache Ausdrücke', () {
+      expect(range('2d6'), (2, 12));
+      expect(range('d20'), (1, 20));
+      expect(range('2d6+3'), (5, 15));
+      expect(range('1d6-2'), (-1, 4));
+    });
+
+    test('Keep und Drop zählen nur die gewerteten Würfel', () {
+      expect(range('4d6kh3'), (3, 18));
+      expect(range('2d6kl1'), (1, 6));
+      expect(range('4d6dl1'), (3, 18));
+    });
+  });
+
+  group('Tabellen-Prüfung', () {
+    test('meldet eine Lücke in den Bereichen', () {
+      const t = OracleTable(
+        id: 't',
+        title: 'Lückenhaft',
+        kind: TableKind.dice,
+        dice: '2d6',
+        entries: [
+          TableEntry(text: 'Tief', min: 2, max: 6),
+          TableEntry(text: 'Hoch', min: 9, max: 12),
+        ],
+      );
+      final problems = validateTable(t);
+      expect(problems, hasLength(1));
+      expect(problems.single, contains('7, 8'));
+    });
+
+    test('eine vollständige Würfeltabelle ist sauber', () {
+      const t = OracleTable(
+        id: 't',
+        title: 'Vollständig',
+        kind: TableKind.dice,
+        dice: '2d6',
+        entries: [
+          TableEntry(text: 'Tief', min: 2, max: 6),
+          TableEntry(text: 'Hoch', min: 7, max: 12),
+        ],
+      );
+      expect(validateTable(t), isEmpty);
+    });
+
+    test('meldet die fehlende dice-Angabe', () {
+      const t = OracleTable(
+        id: 't',
+        title: 'Ohne',
+        kind: TableKind.dice,
+        entries: [TableEntry(text: 'x', min: 1, max: 6)],
+      );
+      expect(validateTable(t).single, contains('dice:'));
+    });
+
+    test('eine kaputte dice-Angabe erfindet keine Lückenmeldung', () {
+      const t = OracleTable(
+        id: 't',
+        title: 'Kaputt',
+        kind: TableKind.dice,
+        dice: 'zwei Würfel',
+        entries: [TableEntry(text: 'x', min: 1, max: 6)],
+      );
+      expect(validateTable(t), isEmpty);
+    });
+
+    test('meldet eine leere Tabelle', () {
+      const t = OracleTable(
+        id: 't',
+        title: 'Leer',
+        kind: TableKind.uniform,
+        entries: [],
+      );
+      expect(validateTable(t).single, contains('keine Einträge'));
     });
   });
 }

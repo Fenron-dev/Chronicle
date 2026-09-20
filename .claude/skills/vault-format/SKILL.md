@@ -156,6 +156,37 @@ OracleVault („Alles ist eine Tabelle"), damit importierte Bundles ohne Überse
 
 **`type: deck`** — wie `table` mit `table-type: deck`, zusätzlich `reversible:` (bool, für Tarot).
 
+#### Der Rumpf einer Tabelle (Schritt 6)
+
+**Eine gewöhnliche Markdown-Liste.** Eine Zufallstabelle soll in Obsidian aussehen wie eine
+Zufallstabelle und sich von Hand erweitern lassen, ohne Chronicle zu öffnen — deshalb keine
+eingebettete JSON-Struktur. Vor dem Text steht eine **optionale** Annotation, abgetrennt durch `|`:
+
+| Schreibweise | Bedeutung |
+|---|---|
+| `- 2-4 \| Dichter Nebel` | Trefferbereich 2–4 (`table-type: dice`) |
+| `- 7 \| Ein Wert` | Bereich 7–7 |
+| `- x3 \| Wegelagerer` | Gewicht 3 (`table-type: weighted`) |
+| `- Eine leere Straße` | ohne Annotation: Gewicht 1 |
+| `- => Namensliste` | der ganze Eintrag kommt aus einer anderen Tabelle (auch `→`) |
+| `- [Kultur] [Epitheton]` | Platzhalter im Text, beim Würfeln aufgelöst |
+
+**Warum `|`:** Es kommt in Tabellentexten praktisch nicht vor und ist auf jeder Tastatur
+erreichbar. Vor allem aber bleibt ein Eintrag **ohne** Trenner gültig — der häufigste Fall braucht
+damit gar keine Syntax. Ein `2-4` ohne `|` ist deshalb Text („2-4 Wachen am Tor"), kein Bereich.
+
+Der Bindestrich im Bereich darf auch ein Gedankenstrich sein (`2–4`): jede Autokorrektur macht das
+irgendwann, und der Eintrag darf dadurch nicht unbrauchbar werden. Ein verdrehter Bereich (`9-5`)
+wird umgedreht statt verworfen.
+
+Alles, was keine Listenzeile ist, wird übersprungen — Überschriften und erklärender Text gehören
+in eine handgepflegte Tabelle.
+
+**Lücken sind eine Meldung, kein Fehler.** `validateTable()` prüft, ob die Bereiche einer
+Würfeltabelle die ganze Spannweite des Ausdrucks abdecken (bei `2d6` also 2 bis 12). Eine Tabelle
+mit Lücke ist nicht kaputt, sondern unfertig: der Editor zeigt das an, verweigert das Öffnen aber
+nicht.
+
 ### Beispiel
 
 ```markdown
