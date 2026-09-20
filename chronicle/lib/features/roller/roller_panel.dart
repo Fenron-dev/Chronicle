@@ -29,14 +29,24 @@ class RollerPanel extends ConsumerStatefulWidget {
 }
 
 class _RollerPanelState extends ConsumerState<RollerPanel> {
-  late final TextEditingController _input = TextEditingController(
-    text: ref.read(lastDiceExpressionProvider),
-  );
+  // BEWUSST NICHT `late final … = TextEditingController(text: ref.read(…))`:
+  // Das Feld wird erst beim ersten Zugriff ausgewertet, und den gibt es nur
+  // im Zweig MIT laufender Partie. Ohne Partie bliebe es uninitialisiert —
+  // und `dispose()` würde mit einem LateInitializationError scheitern, und
+  // zwar beim Abbau des Baums, weit weg von der Ursache.
+  final TextEditingController _input = TextEditingController();
 
   /// Die letzte Quittung — Ergebnis oder Fehler.
   String? _result;
   bool _failed = false;
   bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // ref.read ist in initState erlaubt (nur ref.watch nicht).
+    _input.text = ref.read(lastDiceExpressionProvider);
+  }
 
   @override
   void dispose() {

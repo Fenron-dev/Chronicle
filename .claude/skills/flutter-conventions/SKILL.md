@@ -437,6 +437,42 @@ await tester.runAsync(() async {
 });
 ```
 
+### Ein `late final`-Feld, das nur manchmal berührt wird, sprengt `dispose()`
+
+```dart
+// Falle: wird erst beim ERSTEN ZUGRIFF ausgewertet — und den gibt es nur
+// auf einem von zwei Build-Pfaden.
+late final TextEditingController _input = TextEditingController(
+  text: ref.read(lastDiceExpressionProvider),
+);
+
+@override
+void dispose() {
+  _input.dispose();   // LateInitializationError, wenn der Pfad nie lief
+  super.dispose();
+}
+```
+
+Der Fehler erscheint beim **Abbau** des Baums, mit einem Stapel aus lauter
+`_InactiveElements._unmount`-Rahmen und ohne jeden Hinweis auf das Feld — also weit weg von der
+Ursache. Ausgelöst hat ihn hier ein Widget-Test mit frischem Vault: ohne laufende Partie rendert
+der Roller nur seinen Hinweistext, und das Eingabefeld entsteht nie.
+
+Richtig ist der Controller als gewöhnliches Feld, gefüllt in `initState` (`ref.read` ist dort
+erlaubt, nur `ref.watch` nicht):
+
+```dart
+final TextEditingController _input = TextEditingController();
+
+@override
+void initState() {
+  super.initState();
+  _input.text = ref.read(lastDiceExpressionProvider);
+}
+```
+
+Merksatz: **Was `dispose()` anfasst, darf nicht `late` sein.**
+
 **Und die Konsequenz daraus:** Zustandslogik gehört gar nicht in einen Widget-Test. Ob das
 Vault-Gate umschaltet, prüft ein `ProviderContainer` in einem gewöhnlichen `test()` — schneller,
 ohne Pump-Zyklen, und der eigentliche Punkt steht im Code statt dahinter. Der Widget-Test prüft
