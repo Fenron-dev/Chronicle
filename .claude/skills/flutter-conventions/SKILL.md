@@ -93,6 +93,27 @@ nennenswertes Volumen (§2.1 erlaubt es ausdrücklich) und spart den CI-Durchlau
 falscher Methodenname auffällt. Hängt die Datei an Flutter — etwa über `core/dev_log.dart` — wird
 für den lokalen Lauf ein Stub danebengelegt.
 
+**Das Wegwerf-Paket bekommt `flutter_lints` als dev_dependency und eine Kopie unserer
+`analysis_options.yaml`.** Ohne das prüft `dart analyze` dort einen schwächeren Regelsatz als das
+Gate, und man hält für grün, was in der CI rot wird. `flutter_lints` löst sich auch ohne
+Flutter-SDK auf — es ist reine Konfiguration. Beim ersten Versuch fehlte genau das, und das Gate
+fand prompt eine Regel, die lokal nicht aktiv war:
+
+```dart
+// curly_braces_in_flow_control_structures — und der Auslöser war der
+// Formatter: als Einzeiler wäre das erlaubt gewesen, aber der Ausdruck
+// passte nicht in 80 Zeichen, also hat `dart format` ihn umgebrochen.
+if (raw is Map<String, dynamic>)
+  manifest = BackupManifest.fromJson(raw);     // info • Statements in an if …
+
+if (raw is Map<String, dynamic>) {
+  manifest = BackupManifest.fromJson(raw);
+}
+```
+
+Merksatz: Ein `if` ohne Klammern ist nur so lange erlaubt, wie es in eine Zeile passt — und ob es
+passt, entscheidet nicht der Autor, sondern der Formatter.
+
 Dass das kein Luxus ist, zeigt der Backup-Code: der lokale Lauf fand einen echten Fehler, den kein
 Analyzer gesehen hätte — `NoteSnapshots.restore` las die Datei der alten Fassung *nach* dem
 Sichern des aktuellen Stands, und bei sekundengenauen Zeitstempeln überschrieb dieses Sichern

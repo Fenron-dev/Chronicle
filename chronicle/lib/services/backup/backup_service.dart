@@ -337,8 +337,9 @@ class BackupService {
       final bytes = entry?.readBytes();
       if (bytes != null) {
         final raw = jsonDecode(utf8.decode(bytes));
-        if (raw is Map<String, dynamic>)
+        if (raw is Map<String, dynamic>) {
           manifest = BackupManifest.fromJson(raw);
+        }
       }
     } on ArchiveException catch (error) {
       devLog.warn('backup', 'Kein lesbares Archiv: $archivePath', error: error);
