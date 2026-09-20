@@ -34,6 +34,22 @@ Daraus folgt außerdem: **Code muss beim ersten Mal stimmen.** Ein CI-Durchlauf 
 Sekundenbruchteil. Vor dem Push den eigenen Diff gegenlesen, als wäre man der Analyzer: fehlende
 `part`-Direktive? Falscher Provider-Name? Nicht importiertes Symbol?
 
+### `flutter analyze` scheitert auch an `info`
+
+Es gibt im Gate keine harmlose Stufe: eine Meldung mit `info •` lässt den Lauf genauso scheitern
+wie ein `error •`. Jeder Vorschlag ist also zu befolgen oder bewusst abzuschalten — Ignorieren
+ist keine Option.
+
+Ein Beispiel, das sicher wiederkommt: Dart kennt seit 3.8 **null-aware Elemente**, und der
+Analyzer besteht darauf.
+
+```dart
+children: [
+  if (trailing != null) trailing!,   // info • use_null_aware_elements
+  ?trailing,                         // so ist es gemeint
+]
+```
+
 ### Formatierung: das CI-Gate prüft `dart format`
 
 `dart format --output=none --set-exit-if-changed lib test` läuft als erster Schritt — ein

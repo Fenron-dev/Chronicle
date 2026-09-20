@@ -368,7 +368,9 @@ class _CatalogTile extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (trailing != null) trailing!,
+                // Null-aware Element: kürzer als `if (x != null) x!` und
+                // kommt ohne das `!` aus.
+                ?trailing,
               ],
             ),
           ),
