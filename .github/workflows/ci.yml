@@ -164,43 +164,55 @@ jobs:
       - name: Ensure platform scaffolding
         shell: bash
         run: |
+          set -euo pipefail
+          # Nur anlegen, wenn der Ordner fehlt. `flutter create` schreibt seine
+          # Vorlagen auch über ein bestehendes Projekt — es würde die
+          # eingecheckten Entitlements (Sandbox aus) und jede spätere native
+          # Anpassung (media_kit, Icons) stillschweigend zurücksetzen.
+          if [ -d "${{ matrix.target }}" ]; then
+            echo "${{ matrix.target }}/ liegt im Repo — flutter create übersprungen."
+            exit 0
+          fi
           flutter create --platforms=${{ matrix.target }} \
             --project-name chronicle --org dev.fenron .
 
-      # macOS-Sandbox ABSCHALTEN.
+      # macOS-Sandbox: PRÜFEN, nicht mehr setzen.
       #
-      # `flutter create` aktiviert die App-Sandbox, weil sie für den Mac App
-      # Store Pflicht ist. Chronicle wird als Direkt-Download verteilt, und
-      # für diese App kostet die Sandbox mehr, als sie bringt:
+      # Seit scaffold.yml die Plattform-Ordner eingecheckt hat, steht die
+      # Entscheidung in macos/Runner/*.entitlements — samt Begründung, dort,
+      # wo sie hingehört. Dieser Schritt patcht deshalb nichts mehr.
       #
-      #   `files.user-selected.read-write` gilt nur für Ordner, die der
-      #   Nutzer IN DIESER SITZUNG im Dialog gewählt hat. Ein Pfad aus der
-      #   Zuletzt-Liste trägt dieses Recht beim nächsten Start nicht mehr —
-      #   der Vault ließ sich nicht wieder öffnen. Genau das ist aber der
-      #   Normalfall einer lokal-first App: denselben Ordner immer wieder
-      #   öffnen, auch von einem USB-Stick.
+      # Warum trotzdem eine Prüfung: Ein `flutter create` über einen
+      # fehlenden macos/-Ordner würde die Sandbox wieder einschalten. Die App
+      # wäre auf dem Mac erneut unbenutzbar — und zwar so, dass es weder der
+      # Analyzer noch die Tests noch ein grüner Build zeigen, sondern erst der
+      # Nutzer, dem sein Vault nicht mehr aufgeht. Dieser Fehler ist schon
+      # einmal passiert; er soll hier auffallen, nicht dort.
       #
-      # Der sandbox-konforme Weg wären security-scoped bookmarks (Bookmark
-      # beim Wählen speichern, beim Start auflösen und
-      # startAccessingSecurityScopedResource aufrufen). Das braucht einen
-      # eigenen Platform-Channel und wird erst nötig, wenn Chronicle je in
-      # den App Store soll. Bis dahin: Sandbox aus, normale Dateirechte.
-      - name: Configure macOS entitlements
+      # Zum Hintergrund: `files.user-selected.read-write` gilt nur für Ordner,
+      # die der Nutzer IN DIESER SITZUNG im Dialog gewählt hat. Ein Pfad aus
+      # der Zuletzt-Liste trägt das Recht beim nächsten Start nicht mehr. Der
+      # sandbox-konforme Weg wären security-scoped bookmarks über einen
+      # eigenen Platform-Channel — nötig erst für den App Store.
+      - name: Verify macOS entitlements
         if: matrix.target == 'macos'
         shell: bash
         run: |
           set -euo pipefail
           for plist in macos/Runner/DebugProfile.entitlements \
                        macos/Runner/Release.entitlements; do
-            /usr/libexec/PlistBuddy \
-              -c "Set :com.apple.security.app-sandbox false" "$plist" \
-              2>/dev/null \
-              || /usr/libexec/PlistBuddy \
-                -c "Add :com.apple.security.app-sandbox bool false" "$plist"
             echo "── $plist"
             /usr/libexec/PlistBuddy -c Print "$plist"
+            wert=$(
+              /usr/libexec/PlistBuddy \
+                -c "Print :com.apple.security.app-sandbox" "$plist" \
+                2>/dev/null || echo fehlt
+            )
+            if [ "$wert" != "false" ]; then
+              echo "::error::App-Sandbox in $plist ist '$wert', erwartet 'false' — mit Sandbox lässt sich ein Vault aus der Zuletzt-Liste nicht öffnen (CLAUDE.md §10)."
+              exit 1
+            fi
           done
-
       - name: Install dependencies
         run: flutter pub get
 

@@ -342,24 +342,27 @@ Weitere Skills bei Bedarf (`roll-engine-integration`, `sync`, `llm-profiles`).
 | `ci.yml` | Push auf `main`/`claude/**`/`ci/**`, jeder PR, `workflow_dispatch`, `v*`-Tags | **Gate:** `flutter analyze` + `flutter test` nach Codegen. Dann Matrix-Builds (macOS, iOS, Android, Windows, Linux) als Artefakte. Bei `v*`-Tag: Release mit allen Artefakten. |
 | `scaffold.yml` | nur `workflow_dispatch` | Erzeugt die nativen Plattform-Ordner per `flutter create` **in der CI** und committet sie zurück — weil lokale Builds verboten sind (§2.1). Einmalig bzw. wenn eine Plattform dazukommt. |
 
-Die Build-Jobs legen fehlende Plattform-Ordner bei Bedarf per `flutter create` selbst an, damit ein
-Build auch vor dem Scaffold-Lauf funktioniert. Sobald die Ordner im Repo liegen (native Anpassungen
-für `media_kit`, Icons, Entitlements), ist der Schritt ein No-op.
+**Die Plattform-Ordner liegen seit dem Scaffold-Lauf im Repo** (`chronicle/{android,ios,linux,
+macos,windows}/`). Der Build-Schritt „Ensure platform scaffolding" ruft `flutter create` deshalb
+nur noch auf, **wenn der Ordner fehlt** — und diese Bedingung ist nicht kosmetisch: `flutter
+create` schreibt seine Vorlagen auch über ein bestehendes Projekt und würde jede native Anpassung
+(Entitlements, `media_kit`, Icons) stillschweigend zurücksetzen.
 
-**macOS: App-Sandbox abgeschaltet.** `flutter create` aktiviert sie, weil sie für den Mac App Store
+Native Konfiguration gehört ab jetzt in die eingecheckten Dateien, nicht in einen CI-Schritt.
+
+**macOS: App-Sandbox abgeschaltet** — in `chronicle/macos/Runner/{Debug,Release}.entitlements`,
+mit Begründung in der Datei. Die CI *prüft* das nur noch (Schritt „Verify macOS entitlements") und
+scheitert, wenn die Sandbox wieder an ist. Das ist bewusst ein Gate und keine Reparatur: ein
+falsches Entitlement zeigt sich weder im Analyzer noch in den Tests noch an einem grünen Build,
+sondern erst beim Nutzer, dem sein Vault nicht mehr aufgeht.
+
+Zur Sache: `flutter create` aktiviert sie, weil sie für den Mac App Store
 Pflicht ist. Für Chronicle kostet sie mehr, als sie bringt: `files.user-selected.read-write` gilt
 nur für Ordner, die der Nutzer *in dieser Sitzung* im Dialog gewählt hat — ein Pfad aus der
 Zuletzt-Liste trägt das Recht beim nächsten Start nicht mehr, und der Vault ließ sich nicht wieder
 öffnen. Genau das ist aber der Normalfall einer lokal-first App. Der sandbox-konforme Weg wären
 *security-scoped bookmarks* (Bookmark beim Wählen speichern, beim Start auflösen); das braucht
 einen eigenen Platform-Channel und wird erst nötig, wenn Chronicle je in den App Store soll.
-
-**Ehemaliges macOS-Entitlement, ersetzt durch das Obige:** `flutter create` erzeugt die Runner-Entitlements mit
-aktivierter App-Sandbox, aber ohne Datei-Zugriffsrecht. Ohne
-`com.apple.security.files.user-selected.read-write` öffnet der Ordner-Dialog gar nicht — die App
-tut auf einen Klick sichtbar nichts. Der Build-Job ergänzt den Schlüssel per `PlistBuddy`,
-idempotent. Das ist ein Zwischenschritt: sobald `macos/` eingecheckt ist, gehört die Änderung in
-die Datei und der CI-Schritt wird zum No-op.
 
 **Generell gilt:** Alles, was nativ konfiguriert werden muss, fällt erst beim Ausführen auf der
 Zielplattform auf — nie im Analyzer, nie in den Tests, nie am grünen Build. Ein grüner

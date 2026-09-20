@@ -2,7 +2,15 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- App-Sandbox AUS. `flutter create` schaltet sie ein, weil sie für den
+	     Mac App Store Pflicht ist. Für Chronicle kostet sie mehr, als sie
+	     bringt: `files.user-selected.read-write` gilt nur für Ordner, die der
+	     Nutzer IN DIESER SITZUNG im Dialog gewählt hat. Ein Vault aus der
+	     Zuletzt-Liste ließ sich damit beim nächsten Start nicht mehr öffnen —
+	     der Normalfall einer lokal-first App. Der sandbox-konforme Weg wären
+	     security-scoped bookmarks über einen eigenen Platform-Channel; nötig
+	     erst, falls Chronicle je in den App Store soll. Siehe CLAUDE.md §10. -->
 	<key>com.apple.security.app-sandbox</key>
-	<true/>
+	<false/>
 </dict>
 </plist>

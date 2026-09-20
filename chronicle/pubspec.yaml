@@ -67,6 +67,11 @@ dependencies:
   crypto: ^3.0.7
   # archive: ZIP für Backup/Restore und System-/Game-Bundles.
   archive: ^4.3.0
+  # markdown: NUR der Parser (reines Dart), nicht das Rendering. Die Widgets
+  # baut Chronicle selbst — ein fertiges Markdown-Widget kennt weder unsere
+  # Theme-Tokens noch Callouts, Wikilinks und Embeds. flutter_markdown wäre
+  # dafür ohnehin der falsche Griff: es wird nicht mehr gepflegt.
+  markdown: ^7.3.1
 
   # ─── Hilfspakete ──────────────────────────────────────────────────────────
   # meta: @visibleForTesting in domain/ und data/ ohne Flutter-Import.
@@ -76,7 +81,6 @@ dependencies:
   # ─── Später, Versionen geprüft am 2026-09-19 (siehe CLAUDE.md §3) ─────────
   # Erst eintragen, wenn der zugehörige Schritt beginnt — jedes Paket kostet
   # CI-Zeit und nativen Konfigurationsaufwand.
-  #   markdown: ^7.3.1               # Schritt 5  — Codex-Editor
   #   flutter_secure_storage: ^11.2.0 # Schritt 11 — API-Keys (nie im Vault!)
   #   http: ^1.6.0                   # Schritt 11 — OpenAI-kompatibler Client
   #   media_kit: ^1.2.6              # Medien-Embeds (Audio/Video)
