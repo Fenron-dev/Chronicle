@@ -84,7 +84,7 @@ class _DevLogDialogState extends State<_DevLogDialog> {
                   ),
                   child: ValueListenableBuilder<int>(
                     valueListenable: devLog.revision,
-                    builder: (context, _, __) => Scrollbar(
+                    builder: (context, _, _) => Scrollbar(
                       child: SingleChildScrollView(
                         padding: const EdgeInsets.all(12),
                         child: SelectableText(

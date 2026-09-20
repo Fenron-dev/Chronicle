@@ -50,6 +50,22 @@ children: [
 ]
 ```
 
+Zwei weitere, die regelmäßig auftauchen und dieselbe Wurzel haben — Dart ist seit 3.7/3.8
+ausdrucksstärker geworden, und der Analyzer erwartet die neue Form:
+
+```dart
+// unnecessary_non_null_assertion: eine lokale Variable wird nach dem
+// Null-Check befördert, das `!` ist dann überflüssig. Eine lokale Kopie
+// macht die Beförderung sichtbar und kommt ohne `!` aus.
+final id = currentId;
+if (id == null) return;
+use(id);
+
+// unnecessary_underscores: mehrfaches `_` ist seit Dart 3.7 als Wildcard
+// erlaubt — `__` und `___` braucht niemand mehr.
+builder: (context, _, _) => …
+```
+
 ### Formatierung: das CI-Gate prüft `dart format`
 
 `dart format --output=none --set-exit-if-changed lib test` läuft als erster Schritt — ein

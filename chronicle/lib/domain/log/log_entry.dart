@@ -68,11 +68,12 @@ List<LogEntry> parseLogEntries(String body) {
   final buffer = <String>[];
 
   void flush() {
-    if (currentId == null) return;
+    final id = currentId;
+    if (id == null) return;
     final kind = _kindFrom(currentKindName);
     entries.add(
       LogEntry(
-        id: currentId!,
+        id: id,
         kind: kind,
         timestamp: currentTime ?? DateTime.fromMillisecondsSinceEpoch(0),
         text: _trimBlankEdges(buffer).join('\n'),
