@@ -14,9 +14,12 @@
 import 'dart:io';
 
 import 'package:chronicle/data/db/database.dart';
+import 'package:chronicle/domain/frontmatter/frontmatter.dart';
+import 'package:chronicle/domain/frontmatter/note_frontmatter.dart';
 import 'package:chronicle/data/vault/index_rebuilder.dart';
 import 'package:chronicle/data/vault/vault.dart';
 import 'package:chronicle/data/vault/vault_layout.dart';
+import 'package:chronicle/data/vault/vault_catalog.dart';
 import 'package:chronicle/data/vault/vault_manager.dart';
 import 'package:chronicle/data/vault/vault_providers.dart';
 import 'package:chronicle/data/vault/vault_scanner.dart';
@@ -393,6 +396,137 @@ void main() {
       final recent = await container.read(recentVaultsProvider.future);
       expect(recent.single.path, root);
       expect(recent.single.name, 'Testvault');
+    });
+  });
+
+  group('Katalog', () {
+    test('legt ein System mit allen Unterordnern an', () async {
+      await const VaultManager().create(root, name: 'T');
+
+      final system = await const VaultCatalog().createSystem(
+        root,
+        name: 'Ironsworn: Starforged',
+      );
+
+      // Der Doppelpunkt darf nicht im Ordnernamen landen.
+      expect(system.slug, 'ironsworn-starforged');
+      expect(system.name, 'Ironsworn: Starforged');
+      expect(system.id, isNotEmpty);
+
+      final dir = '$root/systems/${system.slug}';
+      expect(await File('$dir/system.json').exists(), isTrue);
+      expect(await File('$dir/rules.md').exists(), isTrue);
+      for (final sub in kSystemSubDirs) {
+        expect(
+          await Directory('$dir/$sub').exists(),
+          isTrue,
+          reason: 'Unterordner $sub fehlt',
+        );
+      }
+    });
+
+    test('schreibt die Regeldatei mit gültigem Frontmatter', () async {
+      // Der Systemname enthält einen Doppelpunkt — handgeschriebenes YAML
+      // würde daran zerbrechen.
+      await const VaultManager().create(root, name: 'T');
+      final system = await const VaultCatalog().createSystem(
+        root,
+        name: 'Ironsworn: Starforged',
+      );
+
+      final source = await File('$root/systems/${system.slug}/rules.md')
+          .readAsString();
+      final parsed = parseDocument(source);
+
+      expect(parsed.hadFrontmatter, isTrue);
+      expect(NoteFrontmatter.isComplete(parsed.frontmatter), isTrue);
+      expect(parsed.frontmatter['title'], contains('Ironsworn: Starforged'));
+    });
+
+    test('vergibt bei gleichem Namen einen zweiten Ordner', () async {
+      await const VaultManager().create(root, name: 'T');
+      const catalog = VaultCatalog();
+
+      final first = await catalog.createSystem(root, name: 'Mörwald');
+      final second = await catalog.createSystem(root, name: 'Mörwald');
+
+      expect(first.slug, 'moerwald');
+      expect(second.slug, 'moerwald-2');
+      expect(first.id, isNot(second.id));
+    });
+
+    test('legt eine Partie mit Bezug auf ein System an', () async {
+      await const VaultManager().create(root, name: 'T');
+      const catalog = VaultCatalog();
+
+      final system = await catalog.createSystem(root, name: 'Ironsworn');
+      final game = await catalog.createGame(
+        root,
+        name: 'Das Moor von Mörwald',
+        systemId: system.id,
+      );
+
+      expect(game.slug, 'das-moor-von-moerwald');
+      expect(game.systemId, system.id);
+
+      final dir = '$root/games/${game.slug}';
+      expect(await File('$dir/game.json').exists(), isTrue);
+      // Eine Partie beginnt nicht leer — sonst zeigt der Baum nichts.
+      expect(await File('$dir/log/sitzung-1.md').exists(), isTrue);
+      for (final sub in kGameSubDirs) {
+        expect(await Directory('$dir/$sub').exists(), isTrue, reason: sub);
+      }
+    });
+
+    test('liest Systeme und Partien wieder ein', () async {
+      await const VaultManager().create(root, name: 'T');
+      const catalog = VaultCatalog();
+
+      final system = await catalog.createSystem(root, name: 'Ironsworn');
+      await catalog.createGame(root, name: 'Partie A', systemId: system.id);
+      await catalog.createGame(root, name: 'Partie B', systemId: system.id);
+
+      final systems = await catalog.listSystems(root);
+      final games = await catalog.listGames(root);
+
+      expect(systems.single.id, system.id);
+      expect(games.map((g) => g.name), containsAll(['Partie A', 'Partie B']));
+      expect(games.every((g) => g.systemId == system.id), isTrue);
+    });
+
+    test('überspringt einen Ordner mit kaputtem Manifest', () async {
+      // Ein defekter Ordner darf nicht den ganzen Katalog leeren.
+      await const VaultManager().create(root, name: 'T');
+      const catalog = VaultCatalog();
+      await catalog.createSystem(root, name: 'Heil');
+
+      final broken = Directory('$root/systems/kaputt')
+        ..createSync(recursive: true);
+      await File('${broken.path}/system.json').writeAsString('{ das ist kein');
+
+      final systems = await catalog.listSystems(root);
+      expect(systems.single.name, 'Heil');
+    });
+
+    test('macht angelegte Inhalte für den Index sichtbar', () async {
+      // Die eigentliche Zusage: was der Katalog schreibt, findet der Scanner.
+      await const VaultManager().create(root, name: 'T');
+      const catalog = VaultCatalog();
+
+      final system = await catalog.createSystem(root, name: 'Ironsworn');
+      await catalog.createGame(root, name: 'Nebelmoor', systemId: system.id);
+
+      final db = ChronicleDatabase.memory();
+      addTearDown(db.close);
+      final report = await IndexRebuilder(db)
+          .rebuild(await const VaultScanner().scan(root));
+
+      // rules.md des Systems und sitzung-1.md der Partie.
+      expect(report.noteCount, 2);
+
+      final notes = await db.allNotes();
+      final scopes = {for (final n in notes) n.scope};
+      expect(scopes, containsAll(['system', 'game']));
     });
   });
 }

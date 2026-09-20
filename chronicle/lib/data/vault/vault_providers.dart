@@ -22,6 +22,7 @@ import '../db/vault_note.dart';
 import 'index_rebuilder.dart';
 import 'recent_vaults_store.dart';
 import 'vault.dart';
+import 'vault_catalog.dart';
 import 'vault_layout.dart';
 import 'vault_manager.dart';
 import 'vault_scanner.dart';
@@ -51,6 +52,9 @@ VaultManager vaultManager(Ref ref) => const VaultManager();
 
 @Riverpod(keepAlive: true)
 VaultScanner vaultScanner(Ref ref) => const VaultScanner();
+
+@Riverpod(keepAlive: true)
+VaultCatalog vaultCatalog(Ref ref) => const VaultCatalog();
 
 @Riverpod(keepAlive: true)
 RecentVaultsStore recentVaultsStore(Ref ref) => const RecentVaultsStore();
@@ -111,6 +115,31 @@ class ActiveVault extends _$ActiveVault {
   Future<void> close() async {
     await _closeDatabase();
     state = const AsyncData(null);
+  }
+
+  /// Schreibt die aktive Partie in `.chronicle/config.json`.
+  ///
+  /// Sie gehört in den Vault und nicht in shared_preferences: Wer den Stick
+  /// weiterreicht, soll dort weitermachen, wo der Vorbesitzer war.
+  Future<void> setActiveGame(String? gameId) async {
+    final session = state.value;
+    if (session == null) return;
+
+    final updated = session.vault.withConfig(
+      session.vault.config.copyWith(
+        activeGameId: gameId,
+        clearActiveGame: gameId == null,
+      ),
+    );
+    await ref.read(vaultManagerProvider).saveConfig(updated);
+
+    state = AsyncData(
+      VaultSession(
+        vault: updated,
+        database: session.database,
+        report: session.report,
+      ),
+    );
   }
 
   /// Baut den Index neu auf, ohne den Vault zu schließen.
@@ -190,4 +219,101 @@ Future<List<NoteSearchHit>> vaultSearch(Ref ref, String query) async {
   final session = ref.watch(activeVaultProvider).value;
   if (session == null) return const [];
   return session.database.search(query);
+}
+
+// ── Systeme und Partien ─────────────────────────────────────────────────────
+
+/// Alle Systeme des aktiven Vaults.
+@riverpod
+Future<List<SystemEntry>> vaultSystems(Ref ref) async {
+  final session = ref.watch(activeVaultProvider).value;
+  if (session == null) return const [];
+  return ref.watch(vaultCatalogProvider).listSystems(session.vault.rootPath);
+}
+
+/// Alle Partien des aktiven Vaults, neueste zuerst.
+@riverpod
+Future<List<GameEntry>> vaultGames(Ref ref) async {
+  final session = ref.watch(activeVaultProvider).value;
+  if (session == null) return const [];
+  return ref.watch(vaultCatalogProvider).listGames(session.vault.rootPath);
+}
+
+/// Die aktive Partie, oder null.
+///
+/// Sie steht in `.chronicle/config.json` und überlebt damit das Schließen der
+/// App — aber nicht das Weiterreichen an einen anderen Rechner, denn sie ist
+/// eine Vault-Eigenschaft, keine Maschinen-Eigenschaft.
+@riverpod
+Future<GameEntry?> activeGame(Ref ref) async {
+  final session = ref.watch(activeVaultProvider).value;
+  if (session == null) return null;
+
+  final activeId = session.vault.config.activeGameId;
+  if (activeId == null) return null;
+
+  final games = await ref.watch(vaultGamesProvider.future);
+  for (final game in games) {
+    if (game.id == activeId) return game;
+  }
+  // Die Partie wurde außerhalb der App gelöscht. Kein Fehler — der Vault ist
+  // ein Ordner, in dem Nutzer arbeiten dürfen.
+  return null;
+}
+
+/// Legt Systeme und Partien an und hält die aktive Partie fest.
+///
+/// Bewusst eine schlichte Klasse hinter einem Provider statt eines Notifiers:
+/// hier gibt es keinen eigenen Zustand zu halten — nur Aktionen, die andere
+/// Provider anstoßen. Ein Notifier mit `void`-Zustand wäre eine Attrappe.
+@Riverpod(keepAlive: true)
+CatalogActions catalogActions(Ref ref) => CatalogActions(ref);
+
+class CatalogActions {
+  const CatalogActions(this._ref);
+
+  final Ref _ref;
+
+  /// Legt ein System an und baut den Index neu auf, damit `rules.md` sofort
+  /// im Navigations-Baum erscheint.
+  Future<SystemEntry> createSystem(String name) async {
+    final session = _requireSession();
+    final entry = await _ref
+        .read(vaultCatalogProvider)
+        .createSystem(session.vault.rootPath, name: name);
+
+    _ref.invalidate(vaultSystemsProvider);
+    await _ref.read(activeVaultProvider.notifier).reindex();
+    return entry;
+  }
+
+  /// Legt eine Partie an und macht sie zur aktiven.
+  Future<GameEntry> createGame(String name, String systemId) async {
+    final session = _requireSession();
+    final entry = await _ref
+        .read(vaultCatalogProvider)
+        .createGame(session.vault.rootPath, name: name, systemId: systemId);
+
+    _ref.invalidate(vaultGamesProvider);
+    await selectGame(entry.id);
+    await _ref.read(activeVaultProvider.notifier).reindex();
+    return entry;
+  }
+
+  /// Macht die Partie mit [gameId] zur aktiven und schreibt das in den Vault.
+  Future<void> selectGame(String? gameId) async {
+    await _ref.read(activeVaultProvider.notifier).setActiveGame(gameId);
+    _ref.invalidate(activeGameProvider);
+  }
+
+  VaultSession _requireSession() {
+    final session = _ref.read(activeVaultProvider).value;
+    if (session == null) {
+      // Die UI bietet diese Aktionen nur mit offenem Vault an. Kommt es
+      // trotzdem hierher, ist das ein Programmierfehler und soll laut
+      // scheitern.
+      throw StateError('Kein Vault geöffnet');
+    }
+    return session;
+  }
 }

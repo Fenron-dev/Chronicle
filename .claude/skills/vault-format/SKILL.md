@@ -71,7 +71,25 @@ Daraus folgt für jede Code-Änderung:
 
 **Slugs** (`<system-slug>`, `<game-slug>`) sind menschenlesbar, kleingeschrieben, ASCII,
 Bindestrich-getrennt. Sie sind **kein** Identitätsmerkmal — die UUID im Manifest ist es. Ein
-umbenannter Ordner bleibt dasselbe System.
+umbenannter Ordner bleibt dasselbe System. ASCII ist keine Pedanterie: ein Vault wandert per
+USB-Stick zwischen Betriebssystemen, und macOS normalisiert Umlaute in Dateinamen anders als Linux.
+`slugify()` schreibt deshalb um (`ö` → `oe`), und `uniqueSlug()` hängt eine Zahl an, wenn der Name
+schon vergeben ist — zwei Systeme dürfen gleich heißen, zwei Ordner nicht.
+
+### Die Manifeste
+
+**`systems/<slug>/system.json`** — `schemaVersion`, `id` (UUID), `name`, `created`, `description`.
+
+**`games/<slug>/game.json`** — `schemaVersion`, `id`, `name`, `created`, `systemId` (die UUID des
+Systems, auf das sich die Partie bezieht — genau eines), optional `themePresetId`.
+
+**Manifeste sind keine Notizen.** Der Scanner liest nur `.md`-Dateien; `system.json` und `game.json`
+entgehen ihm. Wer Systeme oder Partien auflisten will, liest deshalb direkt das Dateisystem, nicht
+den Index — und bleibt damit auch dann richtig, wenn der Index gerade neu gebaut wird.
+
+Ein neu angelegtes System bekommt eine `rules.md`, eine neue Partie einen ersten Log-Thread, jeweils
+mit vollständigem Frontmatter. Sonst erscheint das eben Angelegte nirgends im Baum, und es sieht
+aus, als wäre nichts passiert.
 
 **Die Defaults-Regel:** Ablageorte und Layouts kommen vom System, das Game darf sie überschreiben.
 Beim Auflösen eines Werts immer in dieser Reihenfolge suchen: **Game → System → App-Default**.

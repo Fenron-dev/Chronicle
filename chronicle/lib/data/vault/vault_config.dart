@@ -66,13 +66,24 @@ class VaultConfig {
   /// zeilenweise diffbar sein.
   String encode() => const JsonEncoder.withIndent('  ').convert(toJson());
 
-  VaultConfig copyWith({String? activeGameId, String? themePresetId}) =>
-      VaultConfig(
-        schemaVersion: schemaVersion,
-        id: id,
-        name: name,
-        created: created,
-        activeGameId: activeGameId ?? this.activeGameId,
-        themePresetId: themePresetId ?? this.themePresetId,
-      );
+  /// Kopie mit geänderten Feldern.
+  ///
+  /// Die `clear`-Flags sind nötig, weil `?? this.x` einen Wert nie auf null
+  /// setzen kann — `copyWith(activeGameId: null)` wäre stillschweigend
+  /// wirkungslos, und „Partie abwählen" würde nicht funktionieren.
+  VaultConfig copyWith({
+    String? activeGameId,
+    String? themePresetId,
+    bool clearActiveGame = false,
+    bool clearThemePreset = false,
+  }) => VaultConfig(
+    schemaVersion: schemaVersion,
+    id: id,
+    name: name,
+    created: created,
+    activeGameId: clearActiveGame ? null : (activeGameId ?? this.activeGameId),
+    themePresetId: clearThemePreset
+        ? null
+        : (themePresetId ?? this.themePresetId),
+  );
 }

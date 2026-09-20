@@ -275,6 +275,7 @@ Analyzer/Tests in CI grün, kurze Zusammenfassung, dann weiter.
 | **2** | Theme-Layer (4 Presets → `ThemeData` + `ChronicleSkin`) + App-Shell (`ResponsiveShell`, 3-Panel-Desktop, go_router `StatefulShellRoute`) | **erledigt** |
 | **3** | Vault-Format: Ordner öffnen/anlegen, Datei-Scan, `index.db`-Rebuild (Drift + FTS5), Multi-Vault-Picker | **erledigt** |
 | **3b** | Backup/Restore + Snapshots vor Migrationen | **als Nächstes** |
+| **3c** | Systeme und Partien anlegen, auflisten, aktive Partie wählen | **erledigt** |
 | **4** | Play-Log (getippte Einträge, Sichtbarkeits-Toggle, Wikilinks) | offen |
 | **5** | Codex-/Markdown-Editor (Source/Reading, Frontmatter, Callouts, Embeds, Hover-Preview) | offen |
 | **6** | Roll-Engine-Portierung + Dice/Oracle/Deck-Roller + Roll-Log im Play-Log | offen |
@@ -285,6 +286,13 @@ Analyzer/Tests in CI grün, kurze Zusammenfassung, dann weiter.
 | **11** | LLM-Profile + Fallback-Ketten + Writing-Tools + Orakel-Anreicherung, globaler AI-Schalter | offen |
 | **12** | Command-Palette, Slash-Commands, Workspaces, Tags/Properties/Backlinks, FTS5-Suche | offen |
 | **13** | Story-Export (Markdown/HTML/PDF, Narration-Filter) | offen |
+
+> **Nachgetragen (Schritt 3c):** Die Reihenfolge sprang ursprünglich von Schritt 3 direkt zum
+> Play-Log — ohne je einen Schritt für das Anlegen von **Systemen und Partien**. Genau die beiden
+> Container fehlten aber, in denen ein Play-Log überhaupt lebt: ein frisch angelegter Vault war
+> eine Sackgasse. Die Lehre: Wenn die Architektur eine Enthaltensbeziehung kennt (Vault ⊃ System ⊃
+> Game), braucht **jede** Ebene einen Schritt, der sie erzeugt — sonst baut man die inneren Ebenen
+> für Container, die niemand anlegen kann.
 
 **Erste testbare Version:** nach Schritt 3. Vault anlegen oder öffnen, Index aus den Dateien
 aufbauen, 3-Panel-Desktop-Layout mit Navigations-Baum, vier Themes umschaltbar. Binaries für alle
