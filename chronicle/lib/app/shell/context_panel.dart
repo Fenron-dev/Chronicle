@@ -3,15 +3,16 @@
 // ZWECK: Rechtes Panel — kontextuelle Werkzeuge (Konzept §7.1): KI-Companion,
 //        Properties, Backlinks, Roller, aktive Clocks, laufende Procedure.
 //
-// STAND: In Schritt 2 stehen hier benannte Platzhalter. Sie sind bewusst
-//        schon da: sie zeigen im Theme-Test, wie Karten und Trenner in jedem
-//        Preset wirken.
+// STAND: Der Roller ist seit Schritt 6 echt. Die übrigen Abschnitte sind
+//        benannte Platzhalter — bewusst schon da, weil sie im Theme-Test
+//        zeigen, wie Karten und Trenner in jedem Preset wirken.
 //
-// SCHRITT: 2
+// SCHRITT: 2, Roller aus 6
 
 import 'package:flutter/material.dart';
 
 import '../../core/theme/theme_access.dart';
+import '../../features/roller/roller_panel.dart';
 import '../../widgets/skin_divider.dart';
 
 class ContextPanel extends StatelessWidget {
@@ -26,10 +27,7 @@ class ContextPanel extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.all(12),
         children: const [
-          _PanelSection(
-            title: 'Roller',
-            hint: 'Würfel, Orakel, Decks — Schritt 6',
-          ),
+          RollerPanel(),
           SkinDivider(),
           _PanelSection(
             title: 'Backlinks',

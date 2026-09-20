@@ -284,7 +284,7 @@ Analyzer/Tests in CI grün, kurze Zusammenfassung, dann weiter.
 | **3c** | Systeme und Partien anlegen, auflisten, aktive Partie wählen | **erledigt** |
 | **4** | Play-Log (getippte Einträge, Sichtbarkeits-Toggle) + Dev-Log | **erledigt** |
 | **5** | Codex-/Markdown-Editor (Quelltext/Lesefassung, Frontmatter, Callouts, Wikilinks, Embeds) — `NoteSnapshots.record` läuft vor jedem Speichern | **erledigt** |
-| **6** | Roll-Engine-Portierung + Dice/Oracle/Deck-Roller + Roll-Log im Play-Log | offen |
+| **6** | Roll-Engine (Dice/Oracle/Deck, Subtabellen mit Zyklus-Erkennung), Tabellen-Dateiformat, Roller-Panel, Würfe als Einträge im Play-Log | **erledigt** |
 | **7** | OracleVault-Import (`.orcl`/Bundle) | offen |
 | **8** | Clocks & Step-Tracks + obere Leiste | offen |
 | **9** | Procedures/Loops (Basis) | offen |
