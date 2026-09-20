@@ -206,7 +206,13 @@ Details (Frontmatter-Keys, Wikilink-Syntax, Rebuild-Regel, Medien-Handling) steh
   bleibt unangetastet; Edges sind redundant, aber abfragbar (Backlinks aus *einer* Query).
 - **Multi-Vault** mit Vault-Picker (Obsidian-artig) plus Liste zuletzt geöffneter Vaults.
 - **Backup ab Tag 1.** Auto-Snapshot **vor jeder Migration**. Ohne funktionierendes Restore wird
-  keine Migration gemergt.
+  keine Migration gemergt. Umgesetzt in `lib/services/backup/`: ZIP über das `archive`-Paket,
+  gestreamt statt im Speicher, mit Manifest (`.chronicle-backup.json`) im Archiv. Vor jedem
+  Zurückspielen legt die App automatisch eine Sicherung des jetzigen Stands an, und danach löscht
+  sie `index.db` — der nächste Öffnen-Vorgang baut ihn aus den Dateien neu auf.
+- **Zurückspielen ersetzt, es mischt nicht.** Genau das, was ein Backup abdecken würde, wird vorher
+  geräumt; `backups/`, `snapshots/` und `thumbnails/` bleiben unberührt. Wäre es ein Zusammenführen,
+  könnte hinterher niemand mehr sagen, was im Vault steht.
 - **Zwei Schreib-Oberflächen**, bewusst getrennt: **Play-Log** (chronologischer Stream getippter
   Einträge, roh) und **Codex-Seiten** (kuratiertes Markdown, schön). Überführung Log→Codex ist eine
   Aktion, kein Automatismus.
@@ -274,10 +280,10 @@ Analyzer/Tests in CI grün, kurze Zusammenfassung, dann weiter.
 | **1** | Repo-Setup, `CLAUDE.md`, Skills, CI-Workflows (Analyzer/Test/Build), Dart-Scaffold | **erledigt** |
 | **2** | Theme-Layer (4 Presets → `ThemeData` + `ChronicleSkin`) + App-Shell (`ResponsiveShell`, 3-Panel-Desktop, go_router `StatefulShellRoute`) | **erledigt** |
 | **3** | Vault-Format: Ordner öffnen/anlegen, Datei-Scan, `index.db`-Rebuild (Drift + FTS5), Multi-Vault-Picker | **erledigt** |
-| **3b** | Backup/Restore + Snapshots vor Migrationen | **als Nächstes** |
+| **3b** | Backup/Restore (ZIP) + Snapshots vor Migrationen + Versions-History je Notiz | **erledigt** |
 | **3c** | Systeme und Partien anlegen, auflisten, aktive Partie wählen | **erledigt** |
 | **4** | Play-Log (getippte Einträge, Sichtbarkeits-Toggle) + Dev-Log | **erledigt** |
-| **5** | Codex-/Markdown-Editor (Source/Reading, Frontmatter, Callouts, Embeds, Hover-Preview) | offen |
+| **5** | Codex-/Markdown-Editor (Source/Reading, Frontmatter, Callouts, Embeds, Hover-Preview) — **hier gehört `NoteSnapshots.record` vor jedes Speichern** | offen |
 | **6** | Roll-Engine-Portierung + Dice/Oracle/Deck-Roller + Roll-Log im Play-Log | offen |
 | **7** | OracleVault-Import (`.orcl`/Bundle) | offen |
 | **8** | Clocks & Step-Tracks + obere Leiste | offen |

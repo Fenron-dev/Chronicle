@@ -17,7 +17,9 @@ import '../../core/theme/chronicle_skin.dart';
 import '../../core/theme/presets.dart';
 import '../../core/theme/theme_access.dart';
 import '../../core/theme/theme_provider.dart';
+import '../../data/vault/index_rebuilder.dart';
 import '../../data/vault/vault_providers.dart';
+import '../../features/backup/backup_screen.dart';
 import '../../features/dev_log/dev_log_sheet.dart';
 import 'shell_providers.dart';
 
@@ -118,18 +120,20 @@ class _VaultMenu extends ConsumerWidget {
       icon: const Icon(Icons.inventory_2_outlined),
       onSelected: (value) {
         final notifier = ref.read(activeVaultProvider.notifier);
-        if (value == 'reindex') {
-          notifier.reindex();
-        } else if (value == 'close') {
-          notifier.close();
+        switch (value) {
+          case 'backup':
+            showBackupManager(context);
+          case 'reindex':
+            notifier.reindex();
+          case 'close':
+            notifier.close();
         }
       },
       itemBuilder: (context) => [
         PopupMenuItem<String>(
           enabled: false,
           child: Text(
-            '\${report.noteCount} Notizen · \${report.edgeCount} Verweise'
-            '\${report.unresolvedLinks > 0 ? " · \${report.unresolvedLinks} offen" : ""}',
+            _summaryOf(report),
             style: Theme.of(context).textTheme.labelSmall,
           ),
         ),
@@ -137,12 +141,16 @@ class _VaultMenu extends ConsumerWidget {
           PopupMenuItem<String>(
             enabled: false,
             child: Text(
-              '\${report.problems.length} Datei(en) übersprungen',
+              '${report.problems.length} Datei(en) übersprungen',
               style: Theme.of(context).textTheme.labelSmall
                   ?.copyWith(color: context.palette.warning),
             ),
           ),
         const PopupMenuDivider(),
+        const PopupMenuItem<String>(
+          value: 'backup',
+          child: Text('Sicherungen…'),
+        ),
         const PopupMenuItem<String>(
           value: 'reindex',
           child: Text('Index neu aufbauen'),
@@ -154,6 +162,20 @@ class _VaultMenu extends ConsumerWidget {
       ],
     );
   }
+}
+
+/// Die Kennzahlen des letzten Rebuilds als eine Zeile.
+///
+/// Als eigene Funktion, weil die verschachtelte Interpolation im Widget-Baum
+/// beim letzten Mal genau das war, was ein maskiertes Dollarzeichen unbemerkt
+/// durchgehen ließ — im Menü stand dann woertlich der Ausdruck statt der Zahl.
+String _summaryOf(RebuildReport report) {
+  final parts = <String>[
+    '${report.noteCount} Notizen',
+    '${report.edgeCount} Verweise',
+    if (report.unresolvedLinks > 0) '${report.unresolvedLinks} offen',
+  ];
+  return parts.join(' · ');
 }
 
 /// Der fokussierte Track mit abhakbaren Beats.

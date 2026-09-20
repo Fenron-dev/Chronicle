@@ -66,6 +66,38 @@ use(id);
 builder: (context, _, _) => …
 ```
 
+### Paket-APIs nicht aus dem Gedächtnis schreiben
+
+Zwei Beispiele aus diesem Projekt, beide auf demselben Weg gefunden — Quelltext des Pakets lesen,
+nicht erinnern:
+
+```dart
+// file_picker 13: FilePicker ist `abstract final class` mit STATISCHEN
+// Methoden (kein `.platform` mehr), und pickFiles liefert eine LISTE,
+// kein nullbares Ergebnis. Abbruch ist die leere Liste.
+final picked = await FilePicker.pickFiles(type: FileType.custom,
+    allowedExtensions: const ['zip']);
+if (picked.isEmpty) return;
+final path = picked.first.path;   // String?, auf dem Web null
+
+// archive 4: ZipFileEncoder schreibt Datei für Datei auf die Platte
+// (create → addFile → close). ZipDecoder().decodeBytes zieht dagegen das
+// ganze Archiv in den Speicher — bei einem Vault mit Medien ein Problem.
+final input = InputFileStream(path);
+final archive = ZipDecoder().decodeStream(input);
+```
+
+Reine Dart-Logik lässt sich dabei **lokal** gegenprüfen: ein Wegwerf-Paket im Scratch-Verzeichnis,
+`dart pub get`, die Datei hineinkopieren, `dart analyze` und `dart test`. Das kostet kein
+nennenswertes Volumen (§2.1 erlaubt es ausdrücklich) und spart den CI-Durchlauf, in dem sonst ein
+falscher Methodenname auffällt. Hängt die Datei an Flutter — etwa über `core/dev_log.dart` — wird
+für den lokalen Lauf ein Stub danebengelegt.
+
+Dass das kein Luxus ist, zeigt der Backup-Code: der lokale Lauf fand einen echten Fehler, den kein
+Analyzer gesehen hätte — `NoteSnapshots.restore` las die Datei der alten Fassung *nach* dem
+Sichern des aktuellen Stands, und bei sekundengenauen Zeitstempeln überschrieb dieses Sichern
+genau die Datei, die gleich gelesen werden sollte.
+
 ### Formatierung: das CI-Gate prüft `dart format`
 
 `dart format --output=none --set-exit-if-changed lib test` läuft als erster Schritt — ein

@@ -258,6 +258,39 @@ nicht reparieren.
 - **Versions-Snapshots je Notiz** (git-lite) ermöglichen, eine Session zurückzunehmen.
 - Format: ZIP (`archive`-Paket), plus JSON-Export für maschinelle Weiterverarbeitung.
 
+### Wie es umgesetzt ist (Schritt 3b)
+
+```
+.chronicle/
+├── backups/
+│   └── chronicle-manual-20260920-0731.zip
+│   └── chronicle-pre-restore-20260920-0733.zip
+└── snapshots/
+    ├── chronicle-pre-migration-20260920-0730.zip
+    └── notes/
+        └── games/moor/log/haupt.md/        ← der Notizpfad, als Ordner gespiegelt
+            └── 20260920-073012-345.md
+```
+
+**Ein Manifest je Archiv**, unter `.chronicle-backup.json` im Archiv-Wurzelverzeichnis: Anlass,
+Zeitpunkt, Vault-Id und -Name, Formatversion, Dateizahl, Rohgröße, optionales Label. Der Punkt im
+Namen ist Absicht — wer das ZIP von Hand entpackt, soll keine fremde Datei sichtbar im Vault
+liegen haben. Beim Zurückspielen wird sie übersprungen.
+
+**Eine Stelle entscheidet, was dazugehört:** `BackupService.isBackedUp(relPath)`. Sie bestimmt
+zugleich, was beim Zurückspielen geräumt wird. Zwei getrennte Listen wären irgendwann uneinig, und
+das Ergebnis wäre ein Vault mit Resten eines anderen Stands. Draußen bleiben `index.db` (samt
+`-wal`/`-shm`), `thumbnails/`, `backups/`, `snapshots/`, `.git/` und die Schreibprobe.
+
+**Zurückspielen ersetzt, es mischt nicht.** Ablauf: Manifest prüfen → Sicherheitssicherung des
+jetzigen Stands anlegen → alle Ziele prüfen (ein Eintrag mit `../` bricht ab, *bevor* etwas
+gelöscht wird) → räumen → auspacken → `index.db` löschen. Der nächste Öffnen-Vorgang baut den
+Index aus den Dateien neu auf — und genau das ist die Zusage aus §2.5, hier als Ablauf.
+
+**Der Vault wird dafür geschlossen und neu geöffnet.** Drift hält ein offenes Handle auf
+`index.db`; unter Windows lässt sich eine offene Datei nicht löschen, und auf einem Stick bliebe
+sonst eine Sperre zurück.
+
 ---
 
 ## Was nicht in den Vault gehört

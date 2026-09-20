@@ -32,3 +32,11 @@ const double kTopBarHeight = 48;
 /// Journal-Text über die volle Bildschirmbreite ist auf einem 27-Zoll-Monitor
 /// unlesbar; der Editor bekommt deshalb eine Obergrenze.
 const double kMaxReadingWidth = 760;
+
+/// Die Version, die in Backup-Manifeste und ins Dev-Log geschrieben wird.
+///
+/// Doppelt gepflegt — hier und in `pubspec.yaml`. Die Alternative wäre
+/// `package_info_plus`, ein Paket mit nativer Konfiguration auf fünf
+/// Plattformen, nur um eine Zeichenkette zu lesen. Beim Anheben der Version
+/// also beide Stellen ändern.
+const String kAppVersion = '0.1.0';

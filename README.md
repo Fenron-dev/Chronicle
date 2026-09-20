@@ -7,7 +7,9 @@ Chronicle verwaltet beliebige Spielsysteme (Regeln, Tabellen, Gameloops), führt
 Alles liegt in einem **Vault** — einem gewöhnlichen Ordner, der auf einen USB-Stick passt und
 weitergereicht werden kann.
 
-**Status:** Schritt 1 von 13 — Repo-Setup, Projektgedächtnis, CI. Noch keine lauffähige App.
+**Status:** Schritte 1–4 — Theme-Layer, App-Shell, Vault-Format mit Index-Rebuild, Systeme und
+Partien, Backup/Restore und das Play-Log stehen. Lauffähig auf allen fünf Plattformen; Binaries
+unter *Actions → Lauf → Artifacts*.
 
 ---
 
@@ -60,9 +62,10 @@ Fertige Binaries: **Actions → Lauf → Artifacts**.
 
 > **macOS:** Die Artefakte sind ad-hoc-signiert, nicht notarisiert. Nach dem Entpacken einmal
 > `xattr -dr com.apple.quarantine Chronicle.app` ausführen, sonst weigert sich Gatekeeper.
-> Der Release-Build läuft in der App-Sandbox; das Recht auf vom Nutzer gewählte Ordner
-> (`com.apple.security.files.user-selected.read-write`) setzt die CI, weil ein Vault genau das
-> ist — ein vom Nutzer gewählter Ordner.
+> Die App-Sandbox ist abgeschaltet: `files.user-selected.read-write` gilt nur für Ordner, die der
+> Nutzer in *dieser* Sitzung im Dialog gewählt hat — ein Vault aus der Zuletzt-Liste wäre beim
+> nächsten Start nicht mehr zugänglich. Der sandbox-konforme Weg (security-scoped bookmarks) wird
+> erst für den App Store gebraucht; Chronicle wird direkt verteilt.
 
 ---
 
