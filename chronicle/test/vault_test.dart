@@ -16,9 +16,11 @@ import 'dart:io';
 import 'package:chronicle/data/db/database.dart';
 import 'package:chronicle/domain/frontmatter/frontmatter.dart';
 import 'package:chronicle/domain/frontmatter/note_frontmatter.dart';
+import 'package:chronicle/domain/log/entry_kind.dart';
 import 'package:chronicle/data/vault/index_rebuilder.dart';
 import 'package:chronicle/data/vault/vault.dart';
 import 'package:chronicle/data/vault/vault_layout.dart';
+import 'package:chronicle/data/vault/log_repository.dart';
 import 'package:chronicle/data/vault/vault_catalog.dart';
 import 'package:chronicle/data/vault/vault_manager.dart';
 import 'package:chronicle/data/vault/vault_providers.dart';
@@ -527,6 +529,132 @@ void main() {
       final notes = await db.allNotes();
       final scopes = {for (final n in notes) n.scope};
       expect(scopes, containsAll(['system', 'game']));
+    });
+  });
+
+  group('Play-Log', () {
+    test('hängt einen Eintrag an und liest ihn wieder', () async {
+      await const VaultManager().create(root, name: 'T');
+      const catalog = VaultCatalog();
+      final system = await catalog.createSystem(root, name: 'Ironsworn');
+      final game = await catalog.createGame(
+        root,
+        name: 'Nebelmoor',
+        systemId: system.id,
+      );
+
+      const repo = LogRepository();
+      final relPath = 'games/${game.slug}/log/sitzung-1.md';
+
+      await repo.appendEntry(
+        root,
+        relPath,
+        kind: EntryKind.narration,
+        text: 'Der Nebel über dem Moor wird dichter.',
+      );
+      await repo.appendEntry(
+        root,
+        relPath,
+        kind: EntryKind.roll,
+        text: '**2d6+1** → 10',
+      );
+
+      final thread = await repo.load(root, relPath);
+
+      expect(thread.entries, hasLength(2));
+      expect(thread.entries.first.kind, EntryKind.narration);
+      expect(thread.entries.last.kind, EntryKind.roll);
+      // Die Überschrift der Datei bleibt erhalten.
+      expect(thread.preamble, contains('Sitzung 1'));
+      expect(thread.title, 'Sitzung 1');
+    });
+
+    test('überlebt einen Index-Rebuild', () async {
+      // Die Einträge stehen in der Datei, nicht im Index — genau deshalb
+      // dürfen sie einen Rebuild nicht bemerken.
+      await const VaultManager().create(root, name: 'T');
+      const catalog = VaultCatalog();
+      final system = await catalog.createSystem(root, name: 'S');
+      final game = await catalog.createGame(
+        root,
+        name: 'G',
+        systemId: system.id,
+      );
+
+      const repo = LogRepository();
+      final relPath = 'games/${game.slug}/log/sitzung-1.md';
+      await repo.appendEntry(
+        root,
+        relPath,
+        kind: EntryKind.plotbeat,
+        text: 'Die Grenze ist verschoben worden.',
+      );
+
+      final db = ChronicleDatabase.memory();
+      addTearDown(db.close);
+      await IndexRebuilder(db).rebuild(await const VaultScanner().scan(root));
+
+      final thread = await repo.load(root, relPath);
+      expect(thread.entries.single.text, 'Die Grenze ist verschoben worden.');
+      expect(thread.entries.single.kind, EntryKind.plotbeat);
+    });
+
+    test('zieht den updated-Zeitstempel mit', () async {
+      await const VaultManager().create(root, name: 'T');
+      const catalog = VaultCatalog();
+      final system = await catalog.createSystem(root, name: 'S');
+      final game = await catalog.createGame(
+        root,
+        name: 'G',
+        systemId: system.id,
+      );
+
+      final relPath = 'games/${game.slug}/log/sitzung-1.md';
+      final before = parseDocument(await File('$root/$relPath').readAsString())
+          .frontmatter['updated'];
+
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      await const LogRepository().appendEntry(
+        root,
+        relPath,
+        kind: EntryKind.meta,
+        text: 'Szene beendet.',
+      );
+
+      final after = parseDocument(await File('$root/$relPath').readAsString())
+          .frontmatter['updated'];
+
+      // Sonst sortiert der Baum nach einem Zeitstempel, der nicht mehr stimmt.
+      expect(after, isNot(before));
+    });
+
+    test('legt einen weiteren Thread an', () async {
+      await const VaultManager().create(root, name: 'T');
+      const catalog = VaultCatalog();
+      final system = await catalog.createSystem(root, name: 'S');
+      final game = await catalog.createGame(
+        root,
+        name: 'G',
+        systemId: system.id,
+      );
+
+      final relPath = await const LogRepository().createThread(
+        root,
+        game.slug,
+        title: 'Gespräch mit Haus Verren',
+        fileStem: 'gespraech-verren',
+      );
+
+      expect(relPath, 'games/${game.slug}/log/gespraech-verren.md');
+
+      final thread = await const LogRepository().load(root, relPath);
+      expect(thread.title, 'Gespräch mit Haus Verren');
+      expect(thread.entries, isEmpty);
+
+      // Und der Scanner erkennt ihn als Log.
+      final scan = await const VaultScanner().scan(root);
+      final note = scan.notes.firstWhere((n) => n.relPath == relPath);
+      expect(note.frontmatter.type, NoteType.log);
     });
   });
 }

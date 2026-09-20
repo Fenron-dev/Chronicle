@@ -15,6 +15,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../core/dev_log.dart';
 import '../db/database.dart';
 import 'vault_scanner.dart';
 
@@ -121,6 +122,18 @@ class IndexRebuilder {
       edges: edgeRows,
       searchRows: searchRows,
     );
+
+    devLog.info(
+      'index',
+      'Rebuild: ${noteRows.length} Notizen, ${edgeRows.length} Kanten, '
+          '$unresolved offene Links, ${scan.problems.length} übersprungen',
+    );
+    for (final problem in scan.problems) {
+      devLog.warn(
+        'index',
+        'Übersprungen: ${problem.relPath} — ${problem.reason}',
+      );
+    }
 
     return RebuildReport(
       noteCount: noteRows.length,

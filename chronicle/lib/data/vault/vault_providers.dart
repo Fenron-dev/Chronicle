@@ -18,10 +18,13 @@ import 'dart:io';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../db/database.dart';
+import '../../domain/log/entry_kind.dart';
+import '../../domain/slug.dart';
 import '../db/vault_note.dart';
 import 'index_rebuilder.dart';
 import 'recent_vaults_store.dart';
 import 'vault.dart';
+import 'log_repository.dart';
 import 'vault_catalog.dart';
 import 'vault_layout.dart';
 import 'vault_manager.dart';
@@ -55,6 +58,9 @@ VaultScanner vaultScanner(Ref ref) => const VaultScanner();
 
 @Riverpod(keepAlive: true)
 VaultCatalog vaultCatalog(Ref ref) => const VaultCatalog();
+
+@Riverpod(keepAlive: true)
+LogRepository logRepository(Ref ref) => const LogRepository();
 
 @Riverpod(keepAlive: true)
 RecentVaultsStore recentVaultsStore(Ref ref) => const RecentVaultsStore();
@@ -315,5 +321,110 @@ class CatalogActions {
       throw StateError('Kein Vault geöffnet');
     }
     return session;
+  }
+}
+
+// ── Play-Log ────────────────────────────────────────────────────────────────
+
+/// Die Log-Threads der aktiven Partie, neueste zuerst.
+@riverpod
+Future<List<VaultNote>> gameLogThreads(Ref ref) async {
+  final session = ref.watch(activeVaultProvider).value;
+  final game = await ref.watch(activeGameProvider.future);
+  if (session == null || game == null) return const [];
+
+  final notes = await session.database.notesOfType('log');
+  return notes.where((n) => n.ownerSlug == game.slug).toList();
+}
+
+/// Der gerade geöffnete Thread. Null heißt: der erste der Partie.
+@Riverpod(keepAlive: true)
+class SelectedThread extends _$SelectedThread {
+  @override
+  String? build() => null;
+
+  void select(String? relPath) => state = relPath;
+}
+
+/// Der geladene Thread samt Einträgen.
+///
+/// Liest die DATEI, nicht den Index: der Index kennt nur Titel und Pfad, die
+/// Einträge stehen im Markdown. Genau so ist es gemeint — die Datei ist die
+/// Wahrheit.
+@riverpod
+Future<LogThread?> activeThread(Ref ref) async {
+  final session = ref.watch(activeVaultProvider).value;
+  if (session == null) return null;
+
+  final threads = await ref.watch(gameLogThreadsProvider.future);
+  if (threads.isEmpty) return null;
+
+  final selected = ref.watch(selectedThreadProvider);
+  final relPath = threads.any((t) => t.relPath == selected)
+      ? selected!
+      : threads.first.relPath;
+
+  return ref.read(logRepositoryProvider).load(session.vault.rootPath, relPath);
+}
+
+/// Schreibaktionen auf dem Play-Log.
+@Riverpod(keepAlive: true)
+LogActions logActions(Ref ref) => LogActions(ref);
+
+class LogActions {
+  const LogActions(this._ref);
+
+  final Ref _ref;
+
+  /// Hängt einen Eintrag an den offenen Thread an.
+  ///
+  /// Erst Datei, dann Index — in dieser Reihenfolge, sonst überlebt der
+  /// Eintrag den nächsten Rebuild nicht.
+  Future<void> appendEntry({
+    required EntryKind kind,
+    required String text,
+  }) async {
+    if (text.trim().isEmpty) return;
+
+    final session = _ref.read(activeVaultProvider).value;
+    final thread = await _ref.read(activeThreadProvider.future);
+    if (session == null || thread == null) return;
+
+    await _ref
+        .read(logRepositoryProvider)
+        .appendEntry(
+          session.vault.rootPath,
+          thread.relPath,
+          kind: kind,
+          text: text,
+        );
+
+    _ref.invalidate(activeThreadProvider);
+    await _ref.read(activeVaultProvider.notifier).reindex();
+  }
+
+  /// Legt einen weiteren Thread in der aktiven Partie an.
+  Future<void> createThread(String title) async {
+    final session = _ref.read(activeVaultProvider).value;
+    final game = await _ref.read(activeGameProvider.future);
+    if (session == null || game == null) return;
+
+    final existing = await _ref.read(gameLogThreadsProvider.future);
+    final stem = uniqueSlug(title, {
+      for (final t in existing) t.relPath.split('/').last.replaceAll('.md', ''),
+    });
+
+    final relPath = await _ref
+        .read(logRepositoryProvider)
+        .createThread(
+          session.vault.rootPath,
+          game.slug,
+          title: title,
+          fileStem: stem,
+        );
+
+    await _ref.read(activeVaultProvider.notifier).reindex();
+    _ref.invalidate(gameLogThreadsProvider);
+    _ref.read(selectedThreadProvider.notifier).select(relPath);
   }
 }

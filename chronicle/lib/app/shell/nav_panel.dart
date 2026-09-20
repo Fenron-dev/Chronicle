@@ -144,11 +144,23 @@ class _VaultTree extends ConsumerWidget {
           );
         }
 
+        // Anzeigenamen statt Ordner-Slugs: „Mythic GME" liest sich besser
+        // als „mythic-gme", und der Slug ist ohnehin nur der Ordnername.
+        final systemNames = {
+          for (final s in ref.watch(vaultSystemsProvider).value ?? const [])
+            s.slug: s.name,
+        };
+        final gameNames = {
+          for (final g in ref.watch(vaultGamesProvider).value ?? const [])
+            g.slug: g.name,
+        };
+
         final groups = <String, List<VaultNote>>{};
         for (final note in rows) {
+          final slug = note.ownerSlug;
           final label = switch (note.scope) {
-            'system' => 'System · \${note.ownerSlug ?? "?"}',
-            'game' => 'Partie · \${note.ownerSlug ?? "?"}',
+            'system' => 'System · ${systemNames[slug] ?? slug ?? "?"}',
+            'game' => 'Partie · ${gameNames[slug] ?? slug ?? "?"}',
             _ => 'Vault',
           };
           groups.putIfAbsent(label, () => []).add(note);
@@ -187,37 +199,78 @@ class _TreeGroup extends StatelessWidget {
                 ?.copyWith(color: palette.textMuted),
           ),
         ),
-        for (final note in notes)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+        for (final note in notes) _TreeEntry(note: note),
+      ],
+    );
+  }
+}
+
+/// Ein Eintrag im Baum. Ein Klick öffnet einen Log-Thread im Play-Log.
+///
+/// Andere Typen sind noch nicht anzeigbar (Codex-Editor: Schritt 5) — sie
+/// bleiben deshalb bewusst ohne Klickverhalten, statt einen Klick zu
+/// schlucken und nichts zu tun.
+class _TreeEntry extends ConsumerWidget {
+  const _TreeEntry({required this.note});
+
+  final VaultNote note;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final palette = context.palette;
+    final skin = context.skin;
+    final openable = note.type == 'log';
+    final selected =
+        openable && ref.watch(selectedThreadProvider) == note.relPath;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 1),
+      child: Material(
+        color: selected ? palette.accentSurface : Colors.transparent,
+        borderRadius: skin.radius(RadiusToken.chip),
+        child: InkWell(
+          borderRadius: skin.radius(RadiusToken.chip),
+          onTap: openable
+              ? () => ref
+                    .read(selectedThreadProvider.notifier)
+                    .select(note.relPath)
+              : null,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
             child: Row(
               children: [
-                Icon(_iconFor(note.type), size: 14, color: palette.textMuted),
+                Icon(
+                  _iconForType(note.type),
+                  size: 14,
+                  color: selected ? palette.accent : palette.textMuted,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     note.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall,
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: selected ? palette.accent : null),
                   ),
                 ),
               ],
             ),
           ),
-      ],
+        ),
+      ),
     );
   }
-
-  IconData _iconFor(String type) => switch (type) {
-    'log' => Icons.history_edu_outlined,
-    'codex' => Icons.menu_book_outlined,
-    'entity' => Icons.person_outline,
-    'table' => Icons.casino_outlined,
-    'deck' => Icons.style_outlined,
-    'sheet' => Icons.assignment_outlined,
-    'procedure' => Icons.checklist_outlined,
-    'canvas' => Icons.dashboard_outlined,
-    _ => Icons.description_outlined,
-  };
 }
+
+IconData _iconForType(String type) => switch (type) {
+  'log' => Icons.history_edu_outlined,
+  'codex' => Icons.menu_book_outlined,
+  'entity' => Icons.person_outline,
+  'table' => Icons.casino_outlined,
+  'deck' => Icons.style_outlined,
+  'sheet' => Icons.assignment_outlined,
+  'procedure' => Icons.checklist_outlined,
+  'canvas' => Icons.dashboard_outlined,
+  _ => Icons.description_outlined,
+};

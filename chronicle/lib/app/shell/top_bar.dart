@@ -18,6 +18,7 @@ import '../../core/theme/presets.dart';
 import '../../core/theme/theme_access.dart';
 import '../../core/theme/theme_provider.dart';
 import '../../data/vault/vault_providers.dart';
+import '../../features/dev_log/dev_log_sheet.dart';
 import 'shell_providers.dart';
 
 class ChronicleTopBar extends ConsumerWidget {
@@ -49,6 +50,11 @@ class ChronicleTopBar extends ConsumerWidget {
           const _VaultMenu(),
           const _ThemeQuickSwitcher(),
           const _BrightnessToggle(),
+          IconButton(
+            tooltip: 'Dev-Log',
+            icon: const Icon(Icons.bug_report_outlined),
+            onPressed: () => showDevLog(context),
+          ),
           IconButton(
             tooltip: contextVisible
                 ? 'Kontext-Panel einklappen'

@@ -17,7 +17,7 @@
 
 import 'package:flutter/material.dart';
 
-import 'entry_kind.dart';
+import '../../domain/log/entry_kind.dart';
 
 /// Semantische Farb-Tokens eines Themes, für eine Helligkeit.
 @immutable

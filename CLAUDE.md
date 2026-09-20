@@ -276,7 +276,7 @@ Analyzer/Tests in CI grün, kurze Zusammenfassung, dann weiter.
 | **3** | Vault-Format: Ordner öffnen/anlegen, Datei-Scan, `index.db`-Rebuild (Drift + FTS5), Multi-Vault-Picker | **erledigt** |
 | **3b** | Backup/Restore + Snapshots vor Migrationen | **als Nächstes** |
 | **3c** | Systeme und Partien anlegen, auflisten, aktive Partie wählen | **erledigt** |
-| **4** | Play-Log (getippte Einträge, Sichtbarkeits-Toggle, Wikilinks) | offen |
+| **4** | Play-Log (getippte Einträge, Sichtbarkeits-Toggle) + Dev-Log | **erledigt** |
 | **5** | Codex-/Markdown-Editor (Source/Reading, Frontmatter, Callouts, Embeds, Hover-Preview) | offen |
 | **6** | Roll-Engine-Portierung + Dice/Oracle/Deck-Roller + Roll-Log im Play-Log | offen |
 | **7** | OracleVault-Import (`.orcl`/Bundle) | offen |
@@ -340,7 +340,15 @@ Die Build-Jobs legen fehlende Plattform-Ordner bei Bedarf per `flutter create` s
 Build auch vor dem Scaffold-Lauf funktioniert. Sobald die Ordner im Repo liegen (native Anpassungen
 für `media_kit`, Icons, Entitlements), ist der Schritt ein No-op.
 
-**macOS-Entitlement, gepatcht in der CI:** `flutter create` erzeugt die Runner-Entitlements mit
+**macOS: App-Sandbox abgeschaltet.** `flutter create` aktiviert sie, weil sie für den Mac App Store
+Pflicht ist. Für Chronicle kostet sie mehr, als sie bringt: `files.user-selected.read-write` gilt
+nur für Ordner, die der Nutzer *in dieser Sitzung* im Dialog gewählt hat — ein Pfad aus der
+Zuletzt-Liste trägt das Recht beim nächsten Start nicht mehr, und der Vault ließ sich nicht wieder
+öffnen. Genau das ist aber der Normalfall einer lokal-first App. Der sandbox-konforme Weg wären
+*security-scoped bookmarks* (Bookmark beim Wählen speichern, beim Start auflösen); das braucht
+einen eigenen Platform-Channel und wird erst nötig, wenn Chronicle je in den App Store soll.
+
+**Ehemaliges macOS-Entitlement, ersetzt durch das Obige:** `flutter create` erzeugt die Runner-Entitlements mit
 aktivierter App-Sandbox, aber ohne Datei-Zugriffsrecht. Ohne
 `com.apple.security.files.user-selected.read-write` öffnet der Ordner-Dialog gar nicht — die App
 tut auf einen Klick sichtbar nichts. Der Build-Job ergänzt den Schlüssel per `PlistBuddy`,

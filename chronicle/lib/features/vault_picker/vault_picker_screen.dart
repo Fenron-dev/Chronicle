@@ -18,6 +18,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants.dart';
+import '../../core/dev_log.dart';
 import '../../core/theme/chronicle_skin.dart';
 import '../../core/theme/theme_access.dart';
 import '../../data/vault/recent_vaults_store.dart';
@@ -131,8 +132,11 @@ class _VaultPickerScreenState extends ConsumerState<VaultPickerScreen> {
   /// zweiten Fall steht der Grund danach in [_pickerError].
   Future<String?> _pickDirectory(String title) async {
     setState(() => _pickerError = null);
+    devLog.info('ui', 'Ordner-Dialog: $title');
     try {
-      return await FilePicker.getDirectoryPath(dialogTitle: title);
+      final path = await FilePicker.getDirectoryPath(dialogTitle: title);
+      devLog.info('ui', 'Gewählt: ${path ?? "(abgebrochen)"}');
+      return path;
     } on PlatformException catch (error, stackTrace) {
       _reportPickerFailure(
         'Der Ordner-Dialog wurde vom Betriebssystem abgewiesen '
@@ -158,6 +162,7 @@ class _VaultPickerScreenState extends ConsumerState<VaultPickerScreen> {
   ) {
     // Zusätzlich auf die Konsole: die Meldung im UI ist für den Nutzer, der
     // Stacktrace für uns.
+    devLog.error('ui', message, error: error, stackTrace: stackTrace);
     FlutterError.reportError(
       FlutterErrorDetails(
         exception: error,

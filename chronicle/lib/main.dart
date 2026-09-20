@@ -13,8 +13,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/app.dart';
+import 'core/dev_log.dart';
 
 void main() {
+  // Vor runApp: sonst entgeht dem Log genau der Fehler, der beim Start
+  // auftritt — und das ist erfahrungsgemäß der interessanteste.
+  DevLog.installErrorHandlers();
+  devLog.info('app', 'Chronicle startet');
+
   // ProviderScope umschließt die gesamte App — Riverpod braucht genau einen.
   runApp(const ProviderScope(child: ChronicleApp()));
 }

@@ -18,7 +18,7 @@ import 'dart:math' as math;
 import 'package:chronicle/core/theme/chronicle_palette.dart';
 import 'package:chronicle/core/theme/chronicle_skin.dart';
 import 'package:chronicle/core/theme/chronicle_typography.dart';
-import 'package:chronicle/core/theme/entry_kind.dart';
+import 'package:chronicle/domain/log/entry_kind.dart';
 import 'package:chronicle/core/theme/presets.dart';
 import 'package:chronicle/core/theme/theme_builder.dart';
 import 'package:flutter/material.dart';

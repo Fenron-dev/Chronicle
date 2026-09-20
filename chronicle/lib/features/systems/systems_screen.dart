@@ -19,7 +19,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/chronicle_palette.dart';
 import '../../core/theme/chronicle_skin.dart';
-import '../../core/theme/entry_kind.dart';
+import '../../domain/log/entry_kind.dart';
 import '../../core/theme/presets.dart';
 import '../../core/theme/theme_access.dart';
 import '../../core/theme/theme_preset.dart';

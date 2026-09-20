@@ -167,26 +167,36 @@ jobs:
           flutter create --platforms=${{ matrix.target }} \
             --project-name chronicle --org dev.fenron .
 
-      # macOS-Sandbox: `flutter create` erzeugt die Entitlements MIT aktivierter
-      # App-Sandbox, aber OHNE Datei-Zugriffsrecht. Der Ordner-Dialog öffnet
-      # dann gar nicht — die App tut auf einen Klick sichtbar nichts. Ohne
-      # dieses Recht ist Chronicle auf dem Mac unbenutzbar, denn ein Vault IST
-      # ein vom Nutzer gewählter Ordner.
+      # macOS-Sandbox ABSCHALTEN.
       #
-      # Gepatcht statt geschrieben: PlistBuddy ergänzt den Schlüssel in dem,
-      # was die Vorlage tatsächlich erzeugt hat. Der Schritt ist idempotent
-      # und wird zum No-op, sobald die macos/-Ordner eingecheckt sind.
-      - name: Grant macOS file-access entitlement
+      # `flutter create` aktiviert die App-Sandbox, weil sie für den Mac App
+      # Store Pflicht ist. Chronicle wird als Direkt-Download verteilt, und
+      # für diese App kostet die Sandbox mehr, als sie bringt:
+      #
+      #   `files.user-selected.read-write` gilt nur für Ordner, die der
+      #   Nutzer IN DIESER SITZUNG im Dialog gewählt hat. Ein Pfad aus der
+      #   Zuletzt-Liste trägt dieses Recht beim nächsten Start nicht mehr —
+      #   der Vault ließ sich nicht wieder öffnen. Genau das ist aber der
+      #   Normalfall einer lokal-first App: denselben Ordner immer wieder
+      #   öffnen, auch von einem USB-Stick.
+      #
+      # Der sandbox-konforme Weg wären security-scoped bookmarks (Bookmark
+      # beim Wählen speichern, beim Start auflösen und
+      # startAccessingSecurityScopedResource aufrufen). Das braucht einen
+      # eigenen Platform-Channel und wird erst nötig, wenn Chronicle je in
+      # den App Store soll. Bis dahin: Sandbox aus, normale Dateirechte.
+      - name: Configure macOS entitlements
         if: matrix.target == 'macos'
         shell: bash
         run: |
           set -euo pipefail
-          key='com.apple.security.files.user-selected.read-write'
           for plist in macos/Runner/DebugProfile.entitlements \
                        macos/Runner/Release.entitlements; do
-            /usr/libexec/PlistBuddy -c "Add :$key bool true" "$plist" \
+            /usr/libexec/PlistBuddy \
+              -c "Set :com.apple.security.app-sandbox false" "$plist" \
               2>/dev/null \
-              || /usr/libexec/PlistBuddy -c "Set :$key true" "$plist"
+              || /usr/libexec/PlistBuddy \
+                -c "Add :com.apple.security.app-sandbox bool false" "$plist"
             echo "── $plist"
             /usr/libexec/PlistBuddy -c Print "$plist"
           done

@@ -15,6 +15,8 @@ import 'dart:io';
 
 import 'package:uuid/uuid.dart';
 
+import '../../core/dev_log.dart';
+
 import 'vault.dart';
 import 'vault_config.dart';
 import 'vault_layout.dart';
@@ -42,6 +44,7 @@ class VaultManager {
     try {
       await root.create(recursive: true);
     } on FileSystemException catch (error) {
+      devLog.error('vault', 'Ordner nicht anlegbar', error: error);
       throw VaultException(VaultOpenFailure.notWritable, rootPath, error);
     }
 
@@ -77,10 +80,20 @@ class VaultManager {
 
   /// Öffnet den Vault in [rootPath].
   Future<Vault> open(String rootPath) async {
-    if (!await Directory(rootPath).exists()) {
+    devLog.info('vault', 'Öffne $rootPath');
+
+    // Die Prüfungen einzeln protokollieren: auf macOS scheitert der Zugriff
+    // auf einen Ordner aus der Zuletzt-Liste an der Sandbox, und dann sieht
+    // `exists() == false` wie „gelöscht" aus, obwohl der Ordner da ist.
+    final exists = await Directory(rootPath).exists();
+    devLog.debug('vault', 'Ordner existiert: $exists');
+    if (!exists) {
       throw VaultException(VaultOpenFailure.missing, rootPath);
     }
-    if (!await isVault(rootPath)) {
+
+    final looksLikeVault = await isVault(rootPath);
+    devLog.debug('vault', '.chronicle/ vorhanden: $looksLikeVault');
+    if (!looksLikeVault) {
       throw VaultException(VaultOpenFailure.notAVault, rootPath);
     }
 
@@ -122,6 +135,7 @@ class VaultManager {
           .create(recursive: true);
     }
 
+    devLog.info('vault', 'Geöffnet: ${config.name} (${config.id})');
     return Vault(rootPath: rootPath, config: config);
   }
 
@@ -142,7 +156,8 @@ class VaultManager {
       await probe.writeAsString('ok', flush: true);
       await probe.delete();
       return true;
-    } on FileSystemException {
+    } on FileSystemException catch (error) {
+      devLog.warn('vault', 'Schreibprobe fehlgeschlagen', error: error);
       return false;
     }
   }

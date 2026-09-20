@@ -97,11 +97,14 @@ void main() {
 
     // Das Gate hat umgeschaltet: Play-Log statt Picker.
     expect(find.text('Vault öffnen…'), findsNothing);
-    expect(find.textContaining('Prüfstein'), findsOneWidget);
+
+    // Ein frischer Vault hat noch keine Partie — das Play-Log sagt das und
+    // verweist auf den Weg dorthin, statt leer zu bleiben.
+    expect(find.textContaining('Systeme'), findsWidgets);
 
     // Grimoire ist das Default-Preset und setzt Überschriften in Versalien —
     // genau das ist die Aufgabe von ChronicleTypography.formatHeading.
-    expect(find.text('DAS MOOR VON MÖRWALD'), findsOneWidget);
+    expect(find.text('KEINE PARTIE AKTIV'), findsOneWidget);
 
     // Der Vault-Name steht in der oberen Leiste.
     expect(find.text('Testvault'), findsOneWidget);

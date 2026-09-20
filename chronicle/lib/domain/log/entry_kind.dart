@@ -1,14 +1,14 @@
-// Datei: chronicle/lib/core/theme/entry_kind.dart
+// Datei: chronicle/lib/domain/log/entry_kind.dart
 //
-// ZWECK: Die Eintragstypen des Play-Logs. Liegt im Theme-Layer, weil jeder
-//        Typ eine eigene Farbe im Token-Set hat — und weil das Play-Log
-//        (Schritt 4) denselben Enum für die Serialisierung braucht.
+// ZWECK: Die Eintragstypen des Play-Logs (Konzept §4.1).
 //
-// WARUM HIER UND NICHT IN features/play_log: Das Theme darf nicht von einem
-//        Feature abhängen, das Feature aber vom Theme. Also wohnt der Enum
-//        unten.
+// WARUM IN domain/ UND NICHT IM THEME: Der Eintragstyp ist ein fachlicher
+//        Begriff — er steht im Dateiformat und entscheidet über den
+//        Narration-Filter des Story-Exports. Dass jeder Typ auch eine Farbe
+//        hat, ist eine Darstellungsfrage; das Theme importiert deshalb von
+//        hier, nicht umgekehrt. (Lag bis Schritt 4 unter core/theme/.)
 //
-// SCHRITT: 2
+// SCHRITT: 2, verschoben in Schritt 4
 
 /// Art eines Log-Eintrags.
 ///
