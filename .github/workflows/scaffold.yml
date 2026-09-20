@@ -56,20 +56,62 @@ jobs:
           flutter create --platforms=${{ inputs.platforms }} \
             --project-name chronicle --org dev.fenron .
 
-      # `flutter create` legt neben den Plattform-Ordnern auch Beispieldateien
-      # an. Unsere eigenen Quellen sind bereits vorhanden und dürfen nicht
-      # überschrieben werden — deshalb werden sie hier zurückgesetzt.
-      - name: Restore our own sources
+      # `flutter create` fasst mehr an als die Plattform-Ordner: es
+      # ÜBERSCHREIBT pubspec.yaml und analysis_options.yaml und LEGT Dateien
+      # AN, die wir nicht wollen — test/widget_test.dart (der Zähler-
+      # Beispieltest), README.md, chronicle.iml, .idea/.
+      #
+      # Der Beispieltest ist dabei kein Schönheitsfehler: er referenziert
+      # `MyApp`, unser Einstiegspunkt heißt `ChronicleApp`. Mitcommittet würde
+      # er das nächste CI-Gate rot machen, weil er nicht einmal kompiliert.
+      #
+      # Ein `git checkout` allein reicht dagegen nicht — es stellt getrackte
+      # Dateien wieder her, lässt neu angelegte aber liegen. Deshalb: die
+      # Plattform-Ordner beiseiteräumen, alles andere hart zurücksetzen, die
+      # Ordner zurückholen.
+      - name: Alles außer den Plattform-Ordnern zurücksetzen
         run: |
-          git checkout -- chronicle/lib chronicle/test chronicle/pubspec.yaml \
-            chronicle/analysis_options.yaml chronicle/README.md 2>/dev/null || true
+          set -euo pipefail
+          keep="$RUNNER_TEMP/platforms"
+          mkdir -p "$keep"
+          for dir in android ios linux macos windows; do
+            if [ -d "chronicle/$dir" ]; then
+              mv "chronicle/$dir" "$keep/"
+            fi
+          done
+
+          git checkout -- chronicle
+          git clean -qfdx chronicle
+
+          for dir in "$keep"/*; do
+            [ -e "$dir" ] && mv "$dir" chronicle/
+          done
+
+      # Lieber hier scheitern als im nächsten CI-Lauf: ein Commit, der eine
+      # Datei außerhalb der Plattform-Ordner enthält, ist ein Fehler in der
+      # Aufräumlogik darüber und kein Ergebnis, das wir haben wollen.
+      - name: Prüfen, dass nur Plattform-Ordner hinzukommen
+        run: |
+          set -euo pipefail
+          git add -A chronicle
+          unerwartet=$(
+            git diff --cached --name-only \
+              | grep -Ev '^chronicle/(android|ios|linux|macos|windows)/' \
+              || true
+          )
+          if [ -n "$unerwartet" ]; then
+            echo "::error::Unerwartete Dateien im Commit:"
+            echo "$unerwartet"
+            exit 1
+          fi
+          echo "Vorgemerkt:"
+          git diff --cached --name-only | cut -d/ -f2 | sort -u
 
       - name: Commit and push
         run: |
           set -euo pipefail
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A chronicle
           if git diff --cached --quiet; then
             echo "Keine Änderungen — Plattform-Ordner sind bereits aktuell."
             exit 0
