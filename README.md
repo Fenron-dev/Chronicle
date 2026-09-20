@@ -58,6 +58,12 @@ harte Projektregel (chronische lokale Speicherplatz-Probleme).
 
 Fertige Binaries: **Actions → Lauf → Artifacts**.
 
+> **macOS:** Die Artefakte sind ad-hoc-signiert, nicht notarisiert. Nach dem Entpacken einmal
+> `xattr -dr com.apple.quarantine Chronicle.app` ausführen, sonst weigert sich Gatekeeper.
+> Der Release-Build läuft in der App-Sandbox; das Recht auf vom Nutzer gewählte Ordner
+> (`com.apple.security.files.user-selected.read-write`) setzt die CI, weil ein Vault genau das
+> ist — ein vom Nutzer gewählter Ordner.
+
 ---
 
 ## Repo-Aufbau

@@ -332,5 +332,16 @@ Die Build-Jobs legen fehlende Plattform-Ordner bei Bedarf per `flutter create` s
 Build auch vor dem Scaffold-Lauf funktioniert. Sobald die Ordner im Repo liegen (native Anpassungen
 für `media_kit`, Icons, Entitlements), ist der Schritt ein No-op.
 
+**macOS-Entitlement, gepatcht in der CI:** `flutter create` erzeugt die Runner-Entitlements mit
+aktivierter App-Sandbox, aber ohne Datei-Zugriffsrecht. Ohne
+`com.apple.security.files.user-selected.read-write` öffnet der Ordner-Dialog gar nicht — die App
+tut auf einen Klick sichtbar nichts. Der Build-Job ergänzt den Schlüssel per `PlistBuddy`,
+idempotent. Das ist ein Zwischenschritt: sobald `macos/` eingecheckt ist, gehört die Änderung in
+die Datei und der CI-Schritt wird zum No-op.
+
+**Generell gilt:** Alles, was nativ konfiguriert werden muss, fällt erst beim Ausführen auf der
+Zielplattform auf — nie im Analyzer, nie in den Tests, nie am grünen Build. Ein grüner
+Matrix-Build heißt „es kompiliert", nicht „es funktioniert".
+
 **Build-Artefakte liegen unter „Actions → Lauf → Artifacts".** Niemals lokal bauen, um an ein
 Binary zu kommen.

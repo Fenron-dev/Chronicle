@@ -167,6 +167,30 @@ jobs:
           flutter create --platforms=${{ matrix.target }} \
             --project-name chronicle --org dev.fenron .
 
+      # macOS-Sandbox: `flutter create` erzeugt die Entitlements MIT aktivierter
+      # App-Sandbox, aber OHNE Datei-Zugriffsrecht. Der Ordner-Dialog öffnet
+      # dann gar nicht — die App tut auf einen Klick sichtbar nichts. Ohne
+      # dieses Recht ist Chronicle auf dem Mac unbenutzbar, denn ein Vault IST
+      # ein vom Nutzer gewählter Ordner.
+      #
+      # Gepatcht statt geschrieben: PlistBuddy ergänzt den Schlüssel in dem,
+      # was die Vorlage tatsächlich erzeugt hat. Der Schritt ist idempotent
+      # und wird zum No-op, sobald die macos/-Ordner eingecheckt sind.
+      - name: Grant macOS file-access entitlement
+        if: matrix.target == 'macos'
+        shell: bash
+        run: |
+          set -euo pipefail
+          key='com.apple.security.files.user-selected.read-write'
+          for plist in macos/Runner/DebugProfile.entitlements \
+                       macos/Runner/Release.entitlements; do
+            /usr/libexec/PlistBuddy -c "Add :$key bool true" "$plist" \
+              2>/dev/null \
+              || /usr/libexec/PlistBuddy -c "Set :$key true" "$plist"
+            echo "── $plist"
+            /usr/libexec/PlistBuddy -c Print "$plist"
+          done
+
       - name: Install dependencies
         run: flutter pub get
 

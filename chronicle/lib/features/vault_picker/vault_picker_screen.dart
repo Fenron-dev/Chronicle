@@ -3,10 +3,18 @@
 // ZWECK: Der erste Screen — Vault öffnen, anlegen, oder einen zuletzt
 //        geöffneten wählen. Obsidian-artig (Konzept §3.2).
 //
+// WARUM ConsumerStatefulWidget: Ein Fehler beim Öffnen des Ordner-Dialogs ist
+//        reiner UI-Zustand dieses Screens — er gehört nicht in einen Provider,
+//        den andere Screens sehen. Wichtig ist nur, dass er überhaupt
+//        SICHTBAR wird: ein `onPressed`-Callback verschluckt eine Exception
+//        stillschweigend, und genau deshalb sah die App auf macOS aus, als
+//        täte ein Klick gar nichts.
+//
 // SCHRITT: 3
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants.dart';
@@ -17,11 +25,19 @@ import '../../data/vault/vault.dart';
 import '../../data/vault/vault_providers.dart';
 import '../../widgets/skin_divider.dart';
 
-class VaultPickerScreen extends ConsumerWidget {
+class VaultPickerScreen extends ConsumerStatefulWidget {
   const VaultPickerScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<VaultPickerScreen> createState() => _VaultPickerScreenState();
+}
+
+class _VaultPickerScreenState extends ConsumerState<VaultPickerScreen> {
+  /// Fehler aus dem Ordner-Dialog selbst (nicht aus dem Öffnen des Vaults).
+  String? _pickerError;
+
+  @override
+  Widget build(BuildContext context) {
     final palette = context.palette;
     final typography = context.typography;
     final session = ref.watch(activeVaultProvider);
@@ -62,23 +78,21 @@ class VaultPickerScreen extends ConsumerWidget {
                   const SizedBox(height: 8),
                 ],
 
-                if (session.hasError) _ErrorNotice(error: session.error!),
+                if (_pickerError != null) _ErrorNotice(message: _pickerError!),
+                if (session.hasError)
+                  _ErrorNotice(message: _messageFor(session.error!)),
 
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     FilledButton.icon(
-                      onPressed: session.isLoading
-                          ? null
-                          : () => _openExisting(ref),
+                      onPressed: session.isLoading ? null : _openExisting,
                       icon: const Icon(Icons.folder_open),
                       label: const Text('Vault öffnen…'),
                     ),
                     const SizedBox(width: 12),
                     OutlinedButton.icon(
-                      onPressed: session.isLoading
-                          ? null
-                          : () => _createNew(ref),
+                      onPressed: session.isLoading ? null : _createNew,
                       icon: const Icon(Icons.create_new_folder_outlined),
                       label: const Text('Neuen Vault anlegen…'),
                     ),
@@ -95,18 +109,14 @@ class VaultPickerScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _openExisting(WidgetRef ref) async {
-    final path = await FilePicker.getDirectoryPath(
-      dialogTitle: 'Chronicle-Vault öffnen',
-    );
+  Future<void> _openExisting() async {
+    final path = await _pickDirectory('Chronicle-Vault öffnen');
     if (path == null) return;
     await ref.read(activeVaultProvider.notifier).openPath(path);
   }
 
-  Future<void> _createNew(WidgetRef ref) async {
-    final path = await FilePicker.getDirectoryPath(
-      dialogTitle: 'Ordner für den neuen Vault wählen',
-    );
+  Future<void> _createNew() async {
+    final path = await _pickDirectory('Ordner für den neuen Vault wählen');
     if (path == null) return;
 
     // Der Ordnername ist der Vault-Name — wie in Obsidian. Umbenennen geht
@@ -114,24 +124,69 @@ class VaultPickerScreen extends ConsumerWidget {
     final name = path.split(RegExp(r'[/\\]')).where((s) => s.isNotEmpty).last;
     await ref.read(activeVaultProvider.notifier).createAndOpen(path, name);
   }
+
+  /// Öffnet den Ordner-Dialog und macht jedes Scheitern sichtbar.
+  ///
+  /// Liefert null, wenn der Nutzer abbricht ODER der Dialog scheitert — im
+  /// zweiten Fall steht der Grund danach in [_pickerError].
+  Future<String?> _pickDirectory(String title) async {
+    setState(() => _pickerError = null);
+    try {
+      return await FilePicker.getDirectoryPath(dialogTitle: title);
+    } on PlatformException catch (error, stackTrace) {
+      _reportPickerFailure(
+        'Der Ordner-Dialog wurde vom Betriebssystem abgewiesen '
+        '(${error.code}). Auf macOS fehlt dafür meist das Sandbox-Recht '
+        'für vom Nutzer gewählte Ordner.',
+        error,
+        stackTrace,
+      );
+    } on MissingPluginException catch (error, stackTrace) {
+      _reportPickerFailure(
+        'Der Ordner-Dialog ist in diesem Build nicht verfügbar.',
+        error,
+        stackTrace,
+      );
+    }
+    return null;
+  }
+
+  void _reportPickerFailure(
+    String message,
+    Object error,
+    StackTrace stackTrace,
+  ) {
+    // Zusätzlich auf die Konsole: die Meldung im UI ist für den Nutzer, der
+    // Stacktrace für uns.
+    FlutterError.reportError(
+      FlutterErrorDetails(
+        exception: error,
+        stack: stackTrace,
+        library: 'chronicle',
+        context: ErrorDescription('beim Öffnen des Ordner-Dialogs'),
+      ),
+    );
+    if (mounted) setState(() => _pickerError = message);
+  }
 }
 
-class _ErrorNotice extends StatelessWidget {
-  const _ErrorNotice({required this.error});
+/// Übersetzt einen Fehler aus dem Vault-Öffnen in einen Satz für den Nutzer.
+///
+/// Eine VaultException weiß, was schiefging, und sagt es mit einer
+/// Handlungsoption. Alles andere ist ein Programmierfehler und wird roh
+/// gezeigt — verschleiern hilft beim Debuggen niemandem.
+String _messageFor(Object error) =>
+    error is VaultException ? error.message : error.toString();
 
-  final Object error;
+class _ErrorNotice extends StatelessWidget {
+  const _ErrorNotice({required this.message});
+
+  final String message;
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
     final skin = context.skin;
-
-    // Eine VaultException weiß, was schiefging, und sagt es in einem Satz
-    // mit Handlungsoption. Alles andere ist ein Programmierfehler und wird
-    // roh gezeigt — verschleiern hilft beim Debuggen niemandem.
-    final message = error is VaultException
-        ? (error as VaultException).message
-        : error.toString();
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),

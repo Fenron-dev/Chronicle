@@ -13,6 +13,11 @@
 #        vorhandene Ordner unberührt.
 #
 # Manuell starten: Actions → "Scaffold platform folders" → Run workflow.
+#
+# HINWEIS: Ein Workflow mit ausschließlich `workflow_dispatch` wird von GitHub
+#        erst registriert, wenn er auf dem Default-Branch liegt und einmal
+#        indiziert wurde. Taucht er unter Actions nicht auf, hilft ein Push,
+#        der diese Datei verändert.
 
 name: Scaffold platform folders
 
