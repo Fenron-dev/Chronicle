@@ -283,7 +283,7 @@ Analyzer/Tests in CI grün, kurze Zusammenfassung, dann weiter.
 | **3b** | Backup/Restore (ZIP) + Snapshots vor Migrationen + Versions-History je Notiz | **erledigt** |
 | **3c** | Systeme und Partien anlegen, auflisten, aktive Partie wählen | **erledigt** |
 | **4** | Play-Log (getippte Einträge, Sichtbarkeits-Toggle) + Dev-Log | **erledigt** |
-| **5** | Codex-/Markdown-Editor (Source/Reading, Frontmatter, Callouts, Embeds, Hover-Preview) — **hier gehört `NoteSnapshots.record` vor jedes Speichern** | offen |
+| **5** | Codex-/Markdown-Editor (Quelltext/Lesefassung, Frontmatter, Callouts, Wikilinks, Embeds) — `NoteSnapshots.record` läuft vor jedem Speichern | **erledigt** |
 | **6** | Roll-Engine-Portierung + Dice/Oracle/Deck-Roller + Roll-Log im Play-Log | offen |
 | **7** | OracleVault-Import (`.orcl`/Bundle) | offen |
 | **8** | Clocks & Step-Tracks + obere Leiste | offen |

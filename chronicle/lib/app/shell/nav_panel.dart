@@ -9,12 +9,15 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme/chronicle_skin.dart';
 import '../../core/theme/theme_access.dart';
 import '../../data/db/vault_note.dart';
 import '../../data/vault/vault_providers.dart';
+import '../../features/codex/codex_providers.dart';
 import '../../widgets/skin_divider.dart';
+import '../routes.dart';
 import 'destinations.dart';
 
 class NavPanel extends StatelessWidget {
@@ -207,9 +210,12 @@ class _TreeGroup extends StatelessWidget {
 
 /// Ein Eintrag im Baum. Ein Klick öffnet einen Log-Thread im Play-Log.
 ///
-/// Andere Typen sind noch nicht anzeigbar (Codex-Editor: Schritt 5) — sie
-/// bleiben deshalb bewusst ohne Klickverhalten, statt einen Klick zu
-/// schlucken und nichts zu tun.
+/// Log-Threads und Codex-Seiten öffnen sich per Klick und wechseln dabei auch
+/// den Bereich — ein Eintrag, der nur auswählt, sähe aus, als täte er nichts.
+///
+/// Alle übrigen Typen (Tabellen, Decks, Bögen) bleiben bewusst ohne
+/// Klickverhalten, bis es Ansichten dafür gibt: einen Klick zu schlucken ist
+/// schlimmer, als ihn gar nicht erst anzubieten.
 class _TreeEntry extends ConsumerWidget {
   const _TreeEntry({required this.note});
 
@@ -219,9 +225,12 @@ class _TreeEntry extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final palette = context.palette;
     final skin = context.skin;
-    final openable = note.type == 'log';
-    final selected =
-        openable && ref.watch(selectedThreadProvider) == note.relPath;
+    final openable = note.type == 'log' || note.type == 'codex';
+    final selected = switch (note.type) {
+      'log' => ref.watch(selectedThreadProvider) == note.relPath,
+      'codex' => ref.watch(selectedCodexPageProvider) == note.relPath,
+      _ => false,
+    };
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 1),
@@ -230,11 +239,7 @@ class _TreeEntry extends ConsumerWidget {
         borderRadius: skin.radius(RadiusToken.chip),
         child: InkWell(
           borderRadius: skin.radius(RadiusToken.chip),
-          onTap: openable
-              ? () => ref
-                    .read(selectedThreadProvider.notifier)
-                    .select(note.relPath)
-              : null,
+          onTap: openable ? () => _open(context, ref, note) : null,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
             child: Row(
@@ -260,6 +265,18 @@ class _TreeEntry extends ConsumerWidget {
         ),
       ),
     );
+  }
+}
+
+/// Öffnet [note] und wechselt in den passenden Bereich.
+void _open(BuildContext context, WidgetRef ref, VaultNote note) {
+  switch (note.type) {
+    case 'log':
+      ref.read(selectedThreadProvider.notifier).select(note.relPath);
+      context.go(Routes.play);
+    case 'codex':
+      ref.read(selectedCodexPageProvider.notifier).select(note.relPath);
+      context.go(Routes.codex);
   }
 }
 
