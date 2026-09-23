@@ -364,6 +364,14 @@ Zuletzt-Liste trägt das Recht beim nächsten Start nicht mehr, und der Vault li
 *security-scoped bookmarks* (Bookmark beim Wählen speichern, beim Start auflösen); das braucht
 einen eigenen Platform-Channel und wird erst nötig, wenn Chronicle je in den App Store soll.
 
+**Trotzdem bleibt `files.user-selected.read-write` = `true` gesetzt**, und die CI prüft auch das.
+Ohne Sandbox wirkt der Schlüssel für macOS nicht — aber `file_picker` prüft ihn *selbst* vor jedem
+Dialog, fängt den Fehler intern ab und liefert `null`, als hätte der Nutzer abgebrochen. Ergebnis:
+„Vault öffnen/anlegen" tat nichts, ohne jede Meldung. Die Lehre: Beim Abschalten eines
+Mechanismus prüfen, wer *außer dem Betriebssystem* die zugehörigen Schlüssel noch liest.
+Damit so etwas künftig sichtbar wird, leitet `main.dart` jedes `print` (Plugins melden Fehler oft
+nur so) ins Dev-Log, und das Dev-Log ist schon am Vault-Picker erreichbar.
+
 **Generell gilt:** Alles, was nativ konfiguriert werden muss, fällt erst beim Ausführen auf der
 Zielplattform auf — nie im Analyzer, nie in den Tests, nie am grünen Build. Ein grüner
 Matrix-Build heißt „es kompiliert", nicht „es funktioniert".

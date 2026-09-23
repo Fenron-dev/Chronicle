@@ -212,6 +212,17 @@ jobs:
               echo "::error::App-Sandbox in $plist ist '$wert', erwartet 'false' — mit Sandbox lässt sich ein Vault aus der Zuletzt-Liste nicht öffnen (CLAUDE.md §10)."
               exit 1
             fi
+            # file_picker prüft diesen Schlüssel selbst, auch ohne Sandbox, und
+            # liefert ohne ihn stumm null — der Ordner-Dialog öffnet sich nie.
+            wert=$(
+              /usr/libexec/PlistBuddy \
+                -c "Print :com.apple.security.files.user-selected.read-write" \
+                "$plist" 2>/dev/null || echo fehlt
+            )
+            if [ "$wert" != "true" ]; then
+              echo "::error::files.user-selected.read-write in $plist ist '$wert', erwartet 'true' — ohne ihn öffnet file_picker keinen Ordner-Dialog (CLAUDE.md §10)."
+              exit 1
+            fi
           done
       - name: Install dependencies
         run: flutter pub get

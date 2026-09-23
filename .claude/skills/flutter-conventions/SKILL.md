@@ -397,7 +397,11 @@ dass echte Bugs in einem Meer von SnackBars untergehen.
   Ende als Liste gemeldet — sonst macht eine defekte Notiz den kompletten Vault unbenutzbar.
 - `AsyncValue.when` im UI mit *allen drei* Fällen. Ein `error: (_, __) => const SizedBox()`
   versteckt genau die Information, die man beim Debuggen braucht.
-- **Kein `print`.** Logging über eine zentrale Stelle in `core/`.
+- **Kein `print`.** Logging über eine zentrale Stelle in `core/`. Umgekehrt landet jedes `print`
+  aus Plugins im Dev-Log (`captureZonePrint` in `main.dart`) — manche Plugins melden Fehler nur so
+  und geben dann einen harmlosen Wert zurück (`file_picker`: `null` wie bei „abgebrochen").
+  `DevLog` selbst schreibt deshalb über `Zone.root.print` auf die Konsole, nie über `debugPrint`,
+  sonst liefe die Meldung im Kreis.
 
 ---
 

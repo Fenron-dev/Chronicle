@@ -12,5 +12,12 @@
 	     erst, falls Chronicle je in den App Store soll. Siehe CLAUDE.md §10. -->
 	<key>com.apple.security.app-sandbox</key>
 	<false/>
+	<!-- `files.user-selected.read-write` trotzdem AN, obwohl es ohne Sandbox
+	     für macOS selbst keine Wirkung hat: `file_picker` prüft den Schlüssel
+	     VOR jedem Dialog selbst und liefert ohne ihn stillschweigend null —
+	     die Knöpfe „Vault öffnen/anlegen" taten dann einfach nichts. Die CI
+	     prüft deshalb beide Schlüssel (ci.yml, „Verify macOS entitlements"). -->
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
 </dict>
 </plist>

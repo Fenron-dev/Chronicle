@@ -25,6 +25,7 @@ import '../../data/vault/recent_vaults_store.dart';
 import '../../data/vault/vault.dart';
 import '../../data/vault/vault_providers.dart';
 import '../../widgets/skin_divider.dart';
+import '../dev_log/dev_log_sheet.dart';
 
 class VaultPickerScreen extends ConsumerStatefulWidget {
   const VaultPickerScreen({super.key});
@@ -102,6 +103,18 @@ class _VaultPickerScreenState extends ConsumerState<VaultPickerScreen> {
 
                 const SizedBox(height: 24),
                 const _RecentVaultsList(),
+
+                // Das Dev-Log muss schon HIER erreichbar sein, nicht erst in
+                // der oberen Leiste: wenn der Picker hängt, kommt man an die
+                // obere Leiste nie heran — und genau dann braucht man es.
+                const SizedBox(height: 16),
+                Center(
+                  child: TextButton.icon(
+                    onPressed: () => showDevLog(context),
+                    icon: const Icon(Icons.bug_report_outlined, size: 16),
+                    label: const Text('Dev-Log'),
+                  ),
+                ),
               ],
             ),
           ),
