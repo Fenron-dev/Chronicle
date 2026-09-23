@@ -286,7 +286,7 @@ Analyzer/Tests in CI grün, kurze Zusammenfassung, dann weiter.
 | **5** | Codex-/Markdown-Editor (Quelltext/Lesefassung, Frontmatter, Callouts, Wikilinks, Embeds) — `NoteSnapshots.record` läuft vor jedem Speichern | **erledigt** |
 | **6** | Roll-Engine (Dice/Oracle/Deck, Subtabellen mit Zyklus-Erkennung), Tabellen-Dateiformat, Roller-Panel, Würfe als Einträge im Play-Log | **erledigt** |
 | **7** | OracleVault-Import (`.orcl`/Bundle) | offen |
-| **8** | Clocks & Step-Tracks + obere Leiste | offen |
+| **8** | Clocks & Step-Tracks (Dateiformat, Abhaken zeilengenau), obere Leiste mit Fokus, Panel; Beats und volle Clocks als Plot-Beats im Log | **erledigt** |
 | **9** | Procedures/Loops (Basis) | offen |
 | **10** | Charakterbögen (Custom-Form + Markdown) | offen |
 | **11** | LLM-Profile + Fallback-Ketten + Writing-Tools + Orakel-Anreicherung, globaler AI-Schalter | offen |

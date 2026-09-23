@@ -91,6 +91,7 @@ class GameEntry {
     required this.created,
     required this.systemId,
     this.themePresetId,
+    this.focusedTrackId,
   });
 
   final String id;
@@ -104,6 +105,13 @@ class GameEntry {
   /// Theme-Override der Partie. Null heißt: das System entscheidet.
   final String? themePresetId;
 
+  /// Der Track in der oberen Leiste (Konzept §4.5). Null heißt: die Leiste
+  /// wählt selbst — einen Track namens „Kampagne", sonst den ersten.
+  ///
+  /// Steht in game.json und nicht in shared_preferences: wer den Stick
+  /// weiterreicht, soll dieselbe Leiste sehen.
+  final String? focusedTrackId;
+
   factory GameEntry.fromJson(Map<String, dynamic> json, String slug) =>
       GameEntry(
         id: json['id'] as String? ?? '',
@@ -114,6 +122,7 @@ class GameEntry {
             DateTime.fromMillisecondsSinceEpoch(0),
         systemId: json['systemId'] as String? ?? '',
         themePresetId: json['themePresetId'] as String?,
+        focusedTrackId: json['focusedTrackId'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -123,6 +132,7 @@ class GameEntry {
     'created': created.toUtc().toIso8601String(),
     'systemId': systemId,
     if (themePresetId != null) 'themePresetId': themePresetId,
+    if (focusedTrackId != null) 'focusedTrackId': focusedTrackId,
   };
 }
 
@@ -272,6 +282,34 @@ class VaultCatalog {
     );
 
     return entry;
+  }
+
+  /// Ändert einzelne Schlüssel in game.json.
+  ///
+  /// Liest das ROHE JSON, ändert nur [changes] und schreibt zurück — nicht
+  /// über [GameEntry.toJson]. Das kennt nur unsere Schlüssel und würde alles
+  /// andere verwerfen: Felder einer neueren Chronicle-Version, oder was ein
+  /// anderes Werkzeug dort abgelegt hat. Ein Wert `null` entfernt den
+  /// Schlüssel.
+  Future<void> updateGameManifest(
+    String rootPath,
+    String slug,
+    Map<String, Object?> changes,
+  ) async {
+    final path = p.join(VaultLayout.games(rootPath), slug, gameManifest);
+    final file = File(path);
+    final raw = jsonDecode(await file.readAsString());
+    if (raw is! Map<String, dynamic>) {
+      throw FormatException('game.json ist kein Objekt', path);
+    }
+    for (final MapEntry(:key, :value) in changes.entries) {
+      if (value == null) {
+        raw.remove(key);
+      } else {
+        raw[key] = value;
+      }
+    }
+    await _writeJson(path, raw);
   }
 
   Future<void> _writeJson(String path, Map<String, dynamic> json) async {

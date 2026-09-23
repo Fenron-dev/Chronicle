@@ -147,8 +147,39 @@ Eintragstypen: `narration` · `roll` · `oracle` · `card` · `plotbeat` · `ai`
 Jeder Eintrag ist Markdown-fähig, verlinkbar und trägt eine eigene UUID — Sub-Threads und
 Querverweise brauchen sie.
 
-**`type: entity`** — `entity-type:` (`npc`|`place`|`faction`|`item`|`scene`|`session`|`clock`) ·
+**`type: entity`** — `entity-type:` (`npc`|`place`|`faction`|`item`|`scene`|`session`|`clock`|`track`) ·
 `template:` (UUID der Vorlage) · Freitext im Body.
+
+#### Clocks und Step-Tracks (Schritt 8)
+
+Beide liegen unter `games/<slug>/entities/` — sie sind Zustand **dieser** Partie, nicht Teil des
+Regelwerks.
+
+**Clock** (`entity-type: clock`) — `segments:` (2–24, üblich 4/6/8) · `filled:` (0–segments).
+Werte außerhalb werden beim Lesen geklemmt, nicht abgelehnt: eine von Hand auf `filled: 9` gesetzte
+6er-Clock ist ein Tippfehler. Der Rumpf ist freier Text.
+
+**Step-Track** (`entity-type: track`) — der Rumpf ist eine **gewöhnliche Aufgabenliste**:
+
+```markdown
+- [x] Ankunft in Mörwald
+- [ ] Der Turm im Moor
+  - [ ] Den Wächter bestechen        ← eingerückt: Unter-Beat
+```
+
+Damit ist ein Track in Obsidian abhakbar, ohne dass Chronicle läuft. Tab und zwei Leerzeichen
+zählen je eine Einrückungsstufe. Fortschritt und „nächster Beat" zählen nur die **Haupt-Beats** —
+Unter-Beats sind die Schritte eines Kapitels, nicht weitere Kapitel.
+
+**Abhaken ändert genau eine Zeile** (`toggleBeat`): nur das Zeichen im Kästchen. Den Rumpf aus dem
+Modell neu zu schreiben würde Prosa, Überschriften und eigene Einrückung zwischen den Beats
+vernichten. Steht in der gemerkten Zeile kein Beat mehr, wurde die Datei außerhalb geändert — dann
+wird **nichts** geschrieben (`StaleTrackException`), statt die falsche Zeile zu kippen.
+
+**Fokus der oberen Leiste** — `focusedTrackId:` in `game.json`. Fehlt er, gilt: ein Track namens
+„Kampagne" → der erste Step-Track → die erste Clock (Konzept §4.5, „Default: Kampagne"). `game.json`
+wird dafür **roh** gelesen, gemergt und geschrieben (`VaultCatalog.updateGameManifest`), nicht über
+`GameEntry.toJson` — das kennt nur unsere Schlüssel und würde fremde verwerfen.
 
 **`type: table`** — `table-type:` (`uniform`|`weighted`|`dice`|`deck`) · `dice:` (z. B. `2d6`) ·
 Einträge als Liste im Body mit `weight`/`range`/`subtable`-Annotationen. Das Modell folgt

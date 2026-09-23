@@ -3,9 +3,7 @@
 // ZWECK: Die obere Leiste. Zeigt den fokussierten Track (Konzept §7.1) und
 //        hält den Theme-Schnellumschalter (Konzept §5.3).
 //
-// STAND: Der Track ist in Schritt 2 noch ein Platzhalter — Clocks und
-//        Step-Tracks kommen in Schritt 8. Die Leiste existiert trotzdem
-//        schon, weil das Desktop-Layout ohne sie anders proportioniert ist.
+// STAND: Der fokussierte Track ist seit Schritt 8 echt (FocusedTrackBar).
 //
 // SCHRITT: 2
 
@@ -13,7 +11,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants.dart';
-import '../../core/theme/chronicle_skin.dart';
 import '../../core/theme/presets.dart';
 import '../../core/theme/theme_access.dart';
 import '../../core/theme/theme_provider.dart';
@@ -21,6 +18,7 @@ import '../../data/vault/index_rebuilder.dart';
 import '../../data/vault/vault_providers.dart';
 import '../../features/backup/backup_screen.dart';
 import '../../features/dev_log/dev_log_sheet.dart';
+import '../../features/tracks/focused_track_bar.dart';
 import 'shell_providers.dart';
 
 class ChronicleTopBar extends ConsumerWidget {
@@ -48,7 +46,7 @@ class ChronicleTopBar extends ConsumerWidget {
                 ref.read(navPanelVisibleProvider.notifier).toggle(),
           ),
           const _VaultLabel(),
-          const Expanded(child: _FocusedTrack()),
+          const Expanded(child: FocusedTrackBar()),
           const _VaultMenu(),
           const _ThemeQuickSwitcher(),
           const _BrightnessToggle(),
@@ -176,43 +174,6 @@ String _summaryOf(RebuildReport report) {
     if (report.unresolvedLinks > 0) '${report.unresolvedLinks} offen',
   ];
   return parts.join(' · ');
-}
-
-/// Der fokussierte Track mit abhakbaren Beats.
-///
-/// Platzhalter bis Schritt 8 — die Struktur (Titel plus Beat-Kette) steht
-/// aber schon, damit das Layout stimmt.
-class _FocusedTrack extends StatelessWidget {
-  const _FocusedTrack();
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = context.palette;
-    final typography = context.typography;
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          typography.formatHeading('Kein Track'),
-          style: Theme.of(context).textTheme.titleSmall
-              ?.copyWith(color: palette.textMuted),
-        ),
-        const SizedBox(width: 12),
-        for (var i = 0; i < 4; i++) ...[
-          Container(
-            width: 26,
-            height: 4,
-            margin: const EdgeInsets.symmetric(horizontal: 2),
-            decoration: BoxDecoration(
-              color: palette.surfaceSunken,
-              borderRadius: context.skin.radius(RadiusToken.chip),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
 }
 
 /// Schnellumschalter für das Preset (Konzept §5.3).

@@ -269,8 +269,9 @@ void main() {
       encoder.addArchiveFile(ArchiveFile.string('irgendwas.md', 'Hallo'));
       await encoder.close();
 
-      // expectLater statt expect: `restore` ist asynchron, und flutter_test
-      // lehnt asynchrone Matcher im synchronen `expect` ab.
+      // expectLater mit await: sonst liefen die folgenden Zeilen, bevor die
+      // Prüfung fertig ist. (In testWidgets verweigert flutter_test die
+      // synchrone Form sogar ganz.)
       await expectLater(
         service.restore(vault.path, fremd),
         throwsA(
